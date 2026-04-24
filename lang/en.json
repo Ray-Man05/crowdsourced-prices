@@ -1,0 +1,29 @@
+{
+    "Select a country": "Select a country",
+    "Select a country first": "Select a country first",
+    "Type to search...": "Type to search...",
+    "No cities found.": "No cities found.",
+    "Country": "Country",
+    "City": "City",
+    "Name": "Name",
+    "Email": "Email",
+    "Password": "Password",
+    "Confirm Password": "Confirm Password",
+    "Already registered?": "Already registered?",
+    "Register": "Register",
+    "Log in": "Log in",
+    "Forgot your password?": "Forgot your password?",
+    "Remember me": "Remember me",
+
+    "Profile Information": "Profile Information",
+    "Update your account's profile information and email address.": "Update your account's profile information and email address.",
+    "Your email address is unverified.": "Your email address is unverified.",
+    "Click here to re-send the verification email.": "Click here to re-send the verification email.",
+    "A new verification link has been sent to your email address.": "A new verification link has been sent to your email address.",
+    "Save": "Save",
+    "Update Password": "Update Password",
+    "Ensure your account is using a long, random password to stay secure. ": "Ensure your account is using a long, random password to stay secure.",
+    "Current Password": "Current Password",
+    "New Password": "Current Password"
+
+}

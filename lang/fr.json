@@ -1,0 +1,17 @@
+{
+    "Select a country": "Sélectionnez un pays",
+    "Select a country first": "Sélectionnez d'abord un pays",
+    "Type to search...": "Tapez pour rechercher...",
+    "No cities found.": "Aucune ville trouvée.",
+    "Country": "Pays",
+    "City": "Ville",
+    "Name": "Nom",
+    "Email": "Adresse e-mail",
+    "Password": "Mot de passe",
+    "Confirm Password": "Confirmez le mot de passe",
+    "Already registered?": "Déjà inscrit ?",
+    "Register": "S'inscrire",
+    "Log in": "Se connecter",
+    "Forgot your password?": "Mot de passe oublié ?",
+    "Remember me": "Se souvenir de moi"
+}

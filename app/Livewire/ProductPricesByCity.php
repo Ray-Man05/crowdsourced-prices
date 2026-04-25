@@ -7,6 +7,7 @@ use App\Models\Product;
 use Illuminate\Support\Collection;
 use Livewire\Component;
 
+    use Livewire\Attributes\On;
 class ProductPricesByCity extends Component
 {
     public Product $product;
@@ -69,4 +70,7 @@ class ProductPricesByCity extends Component
             'unit'      => $this->product->unit,
         ]);
     }
-}
+
+    #[On('estimate-changed')]
+    public function refresh(): void {}
+    }

@@ -7,6 +7,7 @@ use App\Models\Product;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Component;
+use Livewire\Attributes\On;
 
 class ProductPricesOverTime extends Component
 {
@@ -70,5 +71,14 @@ class ProductPricesOverTime extends Component
         return view('livewire.product-prices-over-time', [
             'rows' => $this->rows,
         ]);
+    }
+
+    #[On('estimate-changed')]
+    public function refresh(): void
+    {
+        $this->dispatch('chart-data-updated',
+            rows:          $this->rows->values()->toArray(),
+            categoryColor: $this->product->category->color,
+        );
     }
 }

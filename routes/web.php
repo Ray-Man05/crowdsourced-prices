@@ -5,36 +5,31 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserPreferencesController;
 use App\Livewire\ProductCatalog;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+use App\Livewire\ProductDetail;
+use App\Livewire\MapPage;
+use App\Livewire\EstimateSubmission;
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
-
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
-
-
+// Guest Routes (Preferences - accessible before auth)
 Route::get('/preferences/locale/{locale}', [UserPreferencesController::class, 'switch_locale'])
     ->name('preferences.locale');
 Route::post('/preferences/theme/{theme}', [UserPreferencesController::class, 'switch_theme'])
     ->name('preferences.theme');
 
-Route::get('/', ProductCatalog::class)->name('home')->middleware('auth');
+// Authenticated Routes Group
+Route::middleware('auth')->group(function () {
 
-use App\Livewire\ProductDetail;
-Route::get('/products/{product}', ProductDetail::class)->name('products.show')->middleware('auth');
+    Route::get('/', ProductCatalog::class)->name('home');
+    Route::get('/map', MapPage::class)->name('map');
+    Route::get('/products/{product}', ProductDetail::class)->name('products.show');
 
-use App\Livewire\MapPage;
-Route::get('/map', MapPage::class)->name('map')->middleware('auth');
+    Route::get('/dashboard', fn() => view('dashboard'))->middleware('verified')->name('dashboard');
 
-Route::get('/products/{product}/estimates/create', [EstimateController::class, 'create'])
-    ->name('estimates.create')
-    ->middleware('auth');
+    Route::get('/profile',    [ProfileController::class, 'edit'])   ->name('profile.edit');
+    Route::patch('/profile',  [ProfileController::class, 'update']) ->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    
+});
 
+// Auth
 require __DIR__.'/auth.php';
+

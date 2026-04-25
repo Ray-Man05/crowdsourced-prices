@@ -25,7 +25,11 @@ Route::get('/preferences/locale/{locale}', [UserPreferencesController::class, 's
 Route::post('/preferences/theme/{theme}', [UserPreferencesController::class, 'switch_theme'])
     ->name('preferences.theme');
 
-
 Route::get('/', ProductCatalog::class)->name('home')->middleware('auth');
+
+
+use App\Livewire\MapPage;
+
+Route::get('/map', MapPage::class)->name('map')->middleware('auth');
 
 require __DIR__.'/auth.php';

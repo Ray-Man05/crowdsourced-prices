@@ -17,8 +17,8 @@ export default {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
             colors: {
-                primary:  colors.indigo,
-                accent:   colors.violet,
+                primary:  colors.emerald,
+                accent:   colors.cyan,
                 success:  colors.green,
                 error:    colors.red,
                 warning:  colors.amber,

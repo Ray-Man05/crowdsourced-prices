@@ -14,7 +14,7 @@
                 wire:model="selectedProductId"
                 class="w-full text-sm rounded-lg border-gray-300 dark:border-gray-600
                        bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100
-                       focus:ring focus:ring-cyan-300 focus:border-cyan-500 mb-2"
+                       focus:ring focus:ring-primary-300 focus:border-primary-500 mb-2"
             >
                 <option value="0">{{ __('Select a product...') }}</option>
                 @foreach ($products as $product)
@@ -33,11 +33,11 @@
                     step="0.01"
                     class="w-24 text-sm rounded-lg border-gray-300 dark:border-gray-600
                            bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100
-                           focus:ring focus:ring-cyan-300"
+                           focus:ring focus:ring-primary-300"
                 />
                 <button
                     wire:click="addToBasket"
-                    class="flex-1 px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium rounded-lg transition"
+                    class="flex-1 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition"
                     {{-- style="background-color: var(--color-theme-primary)" --}}
                 >
                     {{ __('Add') }}
@@ -108,13 +108,13 @@
                 <label>{{ __('Opacity') }}</label>
                 <input type="range" x-model="opacity" min="0.2" max="1" step="0.05"
                        @input="$dispatch('marker-style-changed', { opacity: parseFloat(opacity), stroke: parseFloat(stroke) })"
-                       class="w-32 accent-cyan-500"/>
+                       class="w-32 accent-primary-500"/>
             </div>
             <div class="flex items-center justify-between text-sm text-gray-700 dark:text-gray-300">
                 <label>{{ __('Stroke') }}</label>
                 <input type="range" x-model="stroke" min="0" max="6" step="0.5"
                        @input="$dispatch('marker-style-changed', { opacity: parseFloat(opacity), stroke: parseFloat(stroke) })"
-                       class="w-32 accent-cyan-500"/>
+                       class="w-32 accent-primary-500"/>
             </div>
         </div>
 
@@ -128,7 +128,7 @@
                 wire:model.live="colorScale"
                 class="w-full text-sm rounded-lg border-gray-300 dark:border-gray-600
                        bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100
-                       focus:ring focus:ring-cyan-300"
+                       focus:ring focus:ring-primary-300"
             >
                 @foreach ($colorScales as $key => $scale)
                     <option value="{{ $key }}">{{ $scale['label'] }}</option>
@@ -155,14 +155,15 @@
                 wire:click="compute"
                 wire:loading.attr="disabled"
                 wire:loading.class="opacity-50 cursor-not-allowed"
-                class="w-full py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-semibold rounded-lg transition"
+                class="w-full py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition"
             >
                 <span wire:loading.remove>{{ __('Compute prices') }}</span>
                 <span wire:loading>{{ __('Computing...') }}</span>
             </button>
 
             @if ($error)
-                <p class="text-xs mt-2 text-center" style="color: var(--color-theme-error)">
+            
+                <p class="text-xs mt-2 text-center text-error-500" style="color: var(--color-theme-error)">
                     {{ $error }}
                 </p>
             @endif

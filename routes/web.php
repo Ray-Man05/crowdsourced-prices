@@ -27,9 +27,14 @@ Route::post('/preferences/theme/{theme}', [UserPreferencesController::class, 'sw
 
 Route::get('/', ProductCatalog::class)->name('home')->middleware('auth');
 
+use App\Livewire\ProductDetail;
+Route::get('/products/{product}', ProductDetail::class)->name('products.show')->middleware('auth');
 
 use App\Livewire\MapPage;
-
 Route::get('/map', MapPage::class)->name('map')->middleware('auth');
+
+Route::get('/products/{product}/estimates/create', [EstimateController::class, 'create'])
+    ->name('estimates.create')
+    ->middleware('auth');
 
 require __DIR__.'/auth.php';

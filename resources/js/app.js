@@ -6,6 +6,9 @@ import './bootstrap';
 
 // Alpine.start();
 
+import Chart from 'chart.js/auto';
+window.Chart = Chart;
+
 window.toggleTheme = function () {
     const html = document.documentElement;
     const isDark = html.classList.contains('dark');
@@ -23,3 +26,9 @@ window.toggleTheme = function () {
     .then(r => { if (!r.ok) console.error(`toggleTheme: server responded ${r.status}`); })
     .catch(e => { console.error('toggleTheme: fetch failed', e); });
 };
+
+function getThemeColor(variable) {
+    return getComputedStyle(document.documentElement)
+        .getPropertyValue(variable)
+        .trim();
+}

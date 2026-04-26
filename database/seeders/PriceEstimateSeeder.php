@@ -69,7 +69,7 @@ class PriceEstimateSeeder extends Seeder
 
         foreach ($products as $name => $product) {
             $mean            = $this->means[$name] ?? 1.00;
-            $estimateCount   = random_int(10, 30);
+            $estimateCount   = random_int(40, 80);
 
             for ($i = 0; $i < $estimateCount; $i++) {
                 $user     = $users->random();

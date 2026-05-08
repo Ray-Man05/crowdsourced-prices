@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use App\Traits\HasTranslations;
+use App\Services\PriceAggregator;
 
 class Product extends Model
 {
@@ -50,13 +51,7 @@ class Product extends Model
         Currency $targetCurrency,
         int $days = 30,
     ): ?float {
-        $query = $this->priceEstimates()->with('currency');
-
-        if ($days > 0) {
-            $query->where('recorded_at', '>=', Carbon::now()->subDays($days));
-        }
-
-        return PriceEstimate::convertAndAverage($query->get(), $targetCurrency);
+        return app(PriceAggregator::class)->globalAverage($this, $targetCurrency, $days);
     }
 
     /**
@@ -72,7 +67,7 @@ class Product extends Model
         Currency $targetCurrency,
         int $days = 30,
     ): ?float {
-        return $city->averagePrice($this, $targetCurrency, $days);
+        return app(PriceAggregator::class)->cityAverage($this, $city, $targetCurrency, $days);
     }
 
     /**
@@ -106,19 +101,6 @@ class Product extends Model
         Currency $targetCurrency,
         int $days = 30,
     ): Collection {
-        $estimates = $this->priceEstimates()
-            ->recent($days)
-            ->with(['currency', 'city'])
-            ->get();
-
-        return $estimates
-            ->groupBy('city_id')
-            ->map(fn($group) => [
-                'city'    => $group->first()->city,
-                'average' => PriceEstimate::convertAndAverage($group, $targetCurrency),
-            ])
-            ->filter(fn($row) => $row['city'] !== null && $row['average'] !== null)
-            ->sortBy('average')
-            ->values();
+        return app(PriceAggregator::class)->cityBreakdown($this, $targetCurrency, $days);
     }
 }

@@ -79,18 +79,17 @@ class MapPage extends Component
         $cities   = City::with('country')->get();
         $products = Product::findMany(array_column($this->basket, 'product_id'));
         $results  = [];
+        $aggregator = app(\App\Services\PriceAggregator::class);
 
         foreach ($cities as $city) {
             $total    = 0.0;
-            $complete = true;
 
             foreach ($this->basket as $item) {
                 $product = $products->find($item['product_id']);
-                $avg     = $product->averagePriceInCity($city, $currency, $this->days);
+                $avg = $aggregator->cityAverage($product, $city, $currency, $this->days);
 
                 if ($avg === null) {
-                    $complete = false;
-                    continue;
+                    continue 2;
                 }
 
                 $total += $avg * $item['quantity'];
@@ -105,14 +104,13 @@ class MapPage extends Component
                 'lat'       => $city->lat,
                 'lng'       => $city->lng,
                 'total'     => round($total, 2),
-                'symbol'    => $currency->symbol,
-                'complete'  => $complete,
+                'symbol'    => $currency->symbol
             ];
         }
 
         if (empty($results)) {
             $this->error = __('No price data found for this basket.');
-            return;
+            // return;
         }
 
         $this->results = $results;

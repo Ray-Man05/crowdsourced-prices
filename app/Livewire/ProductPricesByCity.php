@@ -7,11 +7,14 @@ use App\Models\Product;
 use Illuminate\Support\Collection;
 use Livewire\Component;
 
-    use Livewire\Attributes\On;
+use Livewire\Attributes\On;
+use App\Services\PriceAggregator;
+
 class ProductPricesByCity extends Component
 {
     public Product $product;
     public string  $citySearch = '';
+    public string  $countrySearch = '';
     public string  $sortBy     = 'price';
     public string  $sortDir    = 'asc';
 
@@ -25,29 +28,14 @@ class ProductPricesByCity extends Component
         }
     }
 
+    // List of [city name, number of submissions, average price] for the product currently selected
     public function getCityStatsProperty(): Collection
     {
         $currency  = auth()->user()->effectiveCurrency();
+        $currency  = auth()->user()->effectiveCurrency();
+        $aggregator = app(PriceAggregator::class);
 
-        $estimates = PriceEstimate::where('product_id', $this->product->id)
-            ->with('currency', 'city.country')
-            ->get();
-
-        $stats = $estimates
-            ->groupBy('city_id')
-            ->map(function (Collection $group) use ($currency) {
-                $converted = $group
-                    ->map(fn($e) => $e->currency->convert($e->price, $currency))
-                    ->filter(fn($v) => $v !== null);
-
-                return [
-                    'city'        => $group->first()->city,
-                    'average'     => $converted->isNotEmpty() ? round($converted->average(), 2) : null,
-                    'submissions' => $group->count(),
-                    'symbol'      => $currency->symbol,
-                ];
-            })
-            ->filter(fn($r) => $r['average'] !== null)
+        $stats = $aggregator->cityBreakdown($this->product, $currency)
             ->filter(fn($r) => !$this->citySearch || str_contains(
                 strtolower($r['city']->name),
                 strtolower($this->citySearch)
@@ -61,6 +49,7 @@ class ProductPricesByCity extends Component
 
         return $sorted->values();
     }
+
 
     public function render()
     {

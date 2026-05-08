@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use App\Services\PriceAggregator;
 
 class City extends Model
 {
@@ -49,21 +50,7 @@ class City extends Model
         Currency $targetCurrency,
         int $days = 30,
     ): ?float {
-
-
-        $query = $this->priceEstimates()
-            ->where('product_id', $product->id)
-            ->with('currency');
-
-        
-            
-        if ($days > 0) {
-            $query->where('updated_at', '>=', Carbon::now()->subDays($days));
-        }
-
-        $estimates = $query->get();
-
-        return PriceEstimate::convertAndAverage($estimates, $targetCurrency);
+        return app(PriceAggregator::class)->cityAverage($product, $this, $targetCurrency, $days);
     }
 
     /**

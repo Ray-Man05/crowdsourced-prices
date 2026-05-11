@@ -26,6 +26,23 @@
                         {{ __('Dashboard') }}
                     </x-nav-link>
                 </div>
+                @if (auth()->user()?->isAdmin())
+
+                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    <x-nav-link :href="route('admin.categories')" :active="request()->routeIs('admin.categories')">
+                        {{ __('Admin') }}
+                    </x-nav-link>
+                </div>
+
+                    {{-- <a href="{{ route('admin.categories') }}"
+                    class="text-sm font-medium px-3 py-1.5 rounded-lg
+                            {{ request()->routeIs('admin.*')
+                                ? 'bg-primary-600 text-white'
+                                : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700' }}
+                            transition">
+                        {{ __('Admin') }}
+                    </a> --}}
+                @endif
                 
             </div>
 

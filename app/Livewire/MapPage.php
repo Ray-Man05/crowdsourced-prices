@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\City;
 use App\Models\Product;
 use Livewire\Component;
+use App\Models\Category;
 
 class MapPage extends Component
 {
@@ -48,6 +49,7 @@ class MapPage extends Component
                 'name'       => $product->name,
                 'unit'       => $product->unit?->symbol ?? '',
                 'quantity'   => $this->selectedQuantity,
+                'category_color' => $product->category?->color ?? '#ffffff'
             ];
         }
 
@@ -124,7 +126,7 @@ class MapPage extends Component
     public function render()
     {
         return view('livewire.map-page', [
-            'products' => Product::with('unit')->orderBy('name')->get(),
+            'categories' => Category::withSortedProducts(),
         ])->layout('layouts.app');
     }
 

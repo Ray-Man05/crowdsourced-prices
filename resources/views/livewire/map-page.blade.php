@@ -1,60 +1,168 @@
 <div class="flex h-[calc(100vh-4rem)] overflow-hidden">
 
     {{-- Sidebar --}}
-    <div class="w-80 flex-shrink-0 bg-white dark:bg-gray-800 border-r border-gray-200
-                dark:border-gray-700 flex flex-col overflow-hidden">
+    <div class="w-80 flex-shrink-0 bg-white dark:bg-neutral-800 border-r border-neutral-200
+                dark:border-neutral-700 flex flex-col overflow-hidden">
 
         {{-- Product picker --}}
-        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">
+        <div class="p-4 border-b border-neutral-200 dark:border-neutral-700">
+            <h2 class="text-sm font-semibold text-neutral-800 dark:text-neutral-100 mb-3">
                 {{ __('Build your basket') }}
             </h2>
-
+{{-- 
             <select
                 wire:model="selectedProductId"
-                class="w-full text-sm rounded-lg border-gray-300 dark:border-gray-600
-                       bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100
-                       focus:ring focus:ring-primary-300 focus:border-primary-500 mb-2"
+                class="w-full text-sm rounded-lg border-neutral-300 dark:border-neutral-600
+                    bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100
+                    focus:ring focus:ring-primary-300 focus:border-primary-500 mb-2"
             >
                 <option value="0">{{ __('Select a product...') }}</option>
-                @foreach ($products as $product)
-                    <option value="{{ $product->id }}">
-                        {{ $product->name }}
-                        @if ($product->unit) ({{ $product->unit->symbol }}) @endif
-                    </option>
+
+                @foreach ($categories as $category)
+                    <optgroup label="{{ $category->name }}">
+                        @foreach ($category->products as $product)
+                            <option value="{{ $product->id }}">
+                                {{ $product->name }}
+                                @if ($product->unit)
+                                    ({{ $product->unit->symbol }})
+                                @endif
+                            </option>
+                        @endforeach
+                    </optgroup>
                 @endforeach
             </select>
 
-            <div class="flex gap-2">
-                <input
-                    type="number"
-                    wire:model="selectedQuantity"
-                    min="0.01"
-                    step="0.01"
-                    class="w-24 text-sm rounded-lg border-gray-300 dark:border-gray-600
-                           bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100
-                           focus:ring focus:ring-primary-300"
-                />
-                <button
-                    wire:click="addToBasket"
-                    class="flex-1 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition"
-                    {{-- style="background-color: var(--color-theme-primary)" --}}
+     --}}
+
+                <div
+                    x-data="{
+                        open: false,
+                        search: '',
+                        selectedProductId: null,
+                        selectedProductName: '',
+                        locale: document.documentElement.lang ?? 'en',
+                        products: {{ Js::from($categories) }},
+
+                        getName(obj) {
+                            if (!obj) return '';
+                            if (typeof obj === 'string') return obj;
+                            return obj[this.locale] ?? obj.en ?? Object.values(obj)[0] ?? '';
+                        },
+
+                        get filteredCategories() {
+                            return this.products.map(category => {
+                                return {
+                                    ...category,
+                                    products: category.products.filter(p =>
+                                        !this.search ||
+                                        this.getName(p.name).toLowerCase().includes(this.search.toLowerCase())
+                                    )
+                                };
+                            }).filter(category => category.products.length > 0);
+                        },
+
+                        selectProduct(product) {
+                            this.selectedProductId = product.id;
+
+                            const name = this.getName(product.name);
+
+                            this.search = name; // IMPORTANT: drive UI from single source of truth
+                            this.open = false;
+
+                            $wire.set('selectedProductId', product.id);
+                        }
+                    }"
+                    class="relative"
                 >
-                    {{ __('Add') }}
-                </button>
+                    {{-- Input --}}
+                    <input
+                        type="text"
+                        x-model="search"
+                        @focus="open = true"
+                        @click.outside="open = false"
+                        @input="open = true"
+                        placeholder="Select a product..."
+                        class="w-full text-sm rounded-lg border-neutral-300 dark:border-neutral-600
+                            bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100
+                            focus:ring focus:ring-primary-300 focus:border-primary-500 mb-2"
+                    />
+
+                    {{-- Hidden field --}}
+                    <input type="hidden" :value="selectedProductId">
+
+                    {{-- Dropdown --}}
+                    <div
+                        x-show="open"
+                        x-cloak
+                        class="absolute z-10 w-full mt-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                    >
+                        <template x-for="category in filteredCategories" :key="category.id">
+                            <div>
+
+                                {{-- Category header with custom color --}}
+                                <div
+                                    class="px-3 py-2 text-xs font-semibold uppercase"
+                                    :style="'color: ' + (category.color ?? '#9ca3af')"
+                                >
+                                    <span x-text="getName(category.name)"></span>
+                                </div>
+
+                                {{-- Products --}}
+                                <template x-for="product in category.products" :key="product.id">
+                                    <div
+                                        @click="selectProduct(product)"
+                                        class="px-4 py-2 text-sm cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                                    >
+                                        <span x-text="getName(product.name)" class="text-neutral-800 dark:text-neutral-200"></span>
+                                        <template x-if="product.unit">
+                                            <span class="text-neutral-400">
+                                                (<span x-text="product.unit.symbol"></span>)
+                                            </span>
+                                        </template>
+                                    </div>
+                                </template>
+
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+
+
+
+                <div class="flex gap-2">
+                    <input
+                        type="number"
+                        wire:model="selectedQuantity"
+                        min="0.01"
+                        step="0.01"
+                        class="w-24 text-sm rounded-lg border-neutral-300 dark:border-neutral-600
+                            bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100
+                            focus:ring focus:ring-primary-300"
+                    />
+                    <button
+                        wire:click="addToBasket"
+                        class="flex-1 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition"
+                        {{-- style="background-color: var(--color-theme-primary)" --}}
+                    >
+                        {{ __('Add') }}
+                    </button>
+                </div>
             </div>
-        </div>
 
         {{-- Basket items --}}
         <div class="flex-1 overflow-y-auto p-4 space-y-2">
             @forelse ($basket as $item)
-                <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50
-                            rounded-lg px-3 py-2 text-sm">
+                <div 
+                    class="flex items-center justify-between bg-neutral-50 dark:bg-neutral-700/50
+                        rounded-lg px-3 py-2 text-sm border-l-4"
+                    style="border-color: {{ $item['category_color'] }};"
+                >
                     <div class="flex-1 min-w-0">
-                        <p class="font-medium text-gray-800 dark:text-gray-100 truncate">
+                        <p class="font-medium text-neutral-800 dark:text-neutral-100 truncate" >
                             {{ $item['name'] }}
                         </p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                        <p class="text-xs text-neutral-500 dark:text-neutral-400">
                             {{ $item['quantity'] }} {{ $item['unit'] }}
                         </p>
                     </div>
@@ -71,14 +179,14 @@
                 </div>
             @empty
                 <div class="flex flex-col items-center justify-center py-8 text-center gap-2">
-                    <svg class="h-8 w-8 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-8 w-8 text-neutral-300 dark:text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                               d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                     </svg>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                    <p class="text-sm text-neutral-500 dark:text-neutral-400">
                         {{ __('Your basket is empty') }}
                     </p>
-                    <p class="text-xs text-gray-400 dark:text-gray-500">
+                    <p class="text-xs text-neutral-400 dark:text-neutral-500">
                         {{ __('Add products above to compare prices across cities') }}
                     </p>
                 </div>
@@ -86,8 +194,8 @@
 
             {{-- Hint shown after at least one item is added --}}
             @if (!empty($basket) && empty($results))
-                <div class="mt-2 rounded-lg border border-dashed border-gray-300 dark:border-gray-600
-                            bg-gray-50 dark:bg-gray-700/30 px-3 py-2 text-xs text-gray-500 dark:text-gray-400
+                <div class="mt-2 rounded-lg border border-dashed border-neutral-300 dark:border-neutral-600
+                            bg-neutral-50 dark:bg-neutral-700/30 px-3 py-2 text-xs text-neutral-500 dark:text-neutral-400
                             flex items-center gap-2">
                     <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -99,18 +207,18 @@
         </div>
 
         {{-- Marker style controls --}}
-        <div class="p-4 border-t border-gray-200 dark:border-gray-700 space-y-3"
+        <div class="p-4 border-t border-neutral-200 dark:border-neutral-700 space-y-3"
              x-data="{ opacity: 0.85, stroke: 2 }">
-            <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <h3 class="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
                 {{ __('Marker style') }}
             </h3>
-            <div class="flex items-center justify-between text-sm text-gray-700 dark:text-gray-300">
+            <div class="flex items-center justify-between text-sm text-neutral-700 dark:text-neutral-300">
                 <label>{{ __('Opacity') }}</label>
                 <input type="range" x-model="opacity" min="0.2" max="1" step="0.05"
                        @input="$dispatch('marker-style-changed', { opacity: parseFloat(opacity), stroke: parseFloat(stroke) })"
                        class="w-32 accent-primary-500"/>
             </div>
-            <div class="flex items-center justify-between text-sm text-gray-700 dark:text-gray-300">
+            <div class="flex items-center justify-between text-sm text-neutral-700 dark:text-neutral-300">
                 <label>{{ __('Stroke') }}</label>
                 <input type="range" x-model="stroke" min="0" max="6" step="0.5"
                        @input="$dispatch('marker-style-changed', { opacity: parseFloat(opacity), stroke: parseFloat(stroke) })"
@@ -119,15 +227,15 @@
         </div>
 
         {{-- Color scale --}}
-        <div class="p-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
-            <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        <div class="p-4 border-t border-neutral-200 dark:border-neutral-700 space-y-3">
+            <h3 class="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
                 {{ __('Color scale') }}
             </h3>
 
             <select
                 wire:model.live="colorScale"
-                class="w-full text-sm rounded-lg border-gray-300 dark:border-gray-600
-                       bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100
+                class="w-full text-sm rounded-lg border-neutral-300 dark:border-neutral-600
+                       bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100
                        focus:ring focus:ring-primary-300"
             >
                 @foreach ($colorScales as $key => $scale)
@@ -136,12 +244,12 @@
             </select>
 
             @if ($colorScale === 'custom')
-                <div class="flex items-center justify-between text-sm text-gray-700 dark:text-gray-300">
+                <div class="flex items-center justify-between text-sm text-neutral-700 dark:text-neutral-300">
                     <label>{{ __('Min (cheap)') }}</label>
                     <input type="color" wire:model.live="colorMin"
                            class="h-7 w-16 rounded cursor-pointer border-0 bg-transparent"/>
                 </div>
-                <div class="flex items-center justify-between text-sm text-gray-700 dark:text-gray-300">
+                <div class="flex items-center justify-between text-sm text-neutral-700 dark:text-neutral-300">
                     <label>{{ __('Max (expensive)') }}</label>
                     <input type="color" wire:model.live="colorMax"
                            class="h-7 w-16 rounded cursor-pointer border-0 bg-transparent"/>
@@ -150,7 +258,7 @@
         </div>
 
         {{-- Compute button --}}
-        <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="p-4 border-t border-neutral-200 dark:border-neutral-700">
             <button
                 wire:click="compute"
                 wire:loading.attr="disabled"
@@ -181,9 +289,9 @@
                 $maxTotal = collect($results)->max('total');
                 $currency = auth()->user()->effectiveCurrency();
             @endphp
-            <div class="absolute bottom-6 right-4 z-10 bg-white dark:bg-gray-800 rounded-xl
-                        shadow-lg border border-gray-200 dark:border-gray-700 p-3 w-52">
-                <p class="text-xs font-semibold text-gray-700 dark:text-gray-200 mb-2">
+            <div class="absolute bottom-6 right-4 z-10 bg-white dark:bg-neutral-800 rounded-xl
+                        shadow-lg border border-neutral-200 dark:border-neutral-700 p-3 w-52">
+                <p class="text-xs font-semibold text-neutral-700 dark:text-neutral-200 mb-2">
                     {{ __('Basket total') }}
                 </p>
 
@@ -196,17 +304,17 @@
                     <div class="flex items-center gap-1">
                         <span class="inline-block w-2.5 h-2.5 rounded-full"
                               style="background: {{ $colorMin }}"></span>
-                        <span class="text-gray-600 dark:text-gray-300">{{ $currency->format($minTotal) }}</span>
+                        <span class="text-neutral-600 dark:text-neutral-300">{{ $currency->format($minTotal) }}</span>
                     </div>
                     <div class="flex items-center gap-1">
-                        <span class="text-gray-600 dark:text-gray-300">{{ $currency->format($maxTotal) }}</span>
+                        <span class="text-neutral-600 dark:text-neutral-300">{{ $currency->format($maxTotal) }}</span>
                         <span class="inline-block w-2.5 h-2.5 rounded-full"
                               style="background: {{ $colorMax }}"></span>
                     </div>
                 </div>
 
                 @if (collect($results)->contains('complete', false))
-                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 italic border-t border-gray-100 dark:border-gray-700 pt-2">
+                    <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-2 italic border-t border-neutral-100 dark:border-neutral-700 pt-2">
                         * {{ __('Partial data') }}
                     </p>
                 @endif

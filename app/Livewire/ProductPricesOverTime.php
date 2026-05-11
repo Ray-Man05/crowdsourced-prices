@@ -8,46 +8,30 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Component;
 use Livewire\Attributes\On;
+use App\Services\PriceAggregator;
 
 class ProductPricesOverTime extends Component
 {
     public Product $product;
-    public int     $days     = 90;
+    public int     $days     = 30;
     public bool    $allCities = false;
 
     public function getRowsProperty(): Collection
     {
         $currency = auth()->user()->effectiveCurrency();
-        $userCity = auth()->user()->city_id;
+        $cityId   = $this->allCities ? null : auth()->user()->city_id;
 
-        $query = PriceEstimate::where('product_id', $this->product->id)
-            ->with('currency', 'city');
 
-        if ($this->days > 0) {
-            $query->where('recorded_at', '>=', Carbon::now()->subDays($this->days));
-        }
+        $scope = $cityId
+            ? ['type' => PriceAggregator::SCOPE_CITY, 'id' => $cityId]
+            : ['type' => PriceAggregator::SCOPE_GLOBAL];
 
-        if (!$this->allCities && $userCity) {
-            $query->where('city_id', $userCity);
-        }
-
-        return $query->get()
-            ->groupBy(fn($e) => Carbon::parse($e->recorded_at)->toDateString())
-            ->map(function (Collection $group) use ($currency) {
-                $converted = $group
-                    ->map(fn($e) => $e->currency->convert($e->price, $currency))
-                    ->filter(fn($v) => $v !== null);
-
-                return [
-                    'date'        => $group->first()->recorded_at->toDateString(),
-                    'average'     => $converted->isNotEmpty() ? round($converted->average(), 2) : null,
-                    'submissions' => $group->count(),
-                    'symbol'      => $currency->symbol,
-                ];
-            })
-            ->filter(fn($r) => $r['average'] !== null)
-            ->sortKeys()
-            ->values();
+        return app(PriceAggregator::class)->dailyAverages(
+            $this->product,
+            $currency,
+            $this->days,
+            $scope,
+        );
     }
 
     public function updatedDays(): void

@@ -7,7 +7,11 @@ use App\Livewire\ProductCatalog;
 
 use App\Livewire\ProductDetail;
 use App\Livewire\MapPage;
-use App\Livewire\EstimateSubmission;
+// use App\Livewire\EstimateSubmission;
+
+use App\Livewire\Admin\CategoryManager;
+use App\Livewire\Admin\UnitManager;
+use App\Livewire\Admin\ProductManager;
 
 // Guest Routes (Preferences - accessible before auth)
 Route::get('/preferences/locale/{locale}', [UserPreferencesController::class, 'switch_locale'])
@@ -28,6 +32,12 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile',  [ProfileController::class, 'update']) ->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     
+});
+
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/categories', CategoryManager::class)->name('categories');
+    Route::get('/units',      UnitManager::class)    ->name('units');
+    Route::get('/products',   ProductManager::class) ->name('products');
 });
 
 // Auth

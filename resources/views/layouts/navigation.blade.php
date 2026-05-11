@@ -111,7 +111,18 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
-        </div>
+        
+            <x-responsive-nav-link :href="route('home')" :active="request()->routeIs('home')">
+                {{ __('Products') }}
+            </x-responsive-nav-link>
+        
+            <x-responsive-nav-link :href="route('map')" :active="request()->routeIs('map')">
+                {{ __('Map') }}
+            </x-responsive-nav-link>
+
+
+
+
 
         <!-- Responsive Settings Options -->
         <div class="pt-4 pb-1 border-t border-neutral-200 dark:border-neutral-600">

@@ -9,10 +9,10 @@
                 type="text"
                 wire:model.live.debounce.200ms="search"
                 placeholder="{{ __('Search products...') }}"
-                class="w-full rounded-lg border-gray-300 dark:border-gray-600
-                bg-white dark:bg-gray-800
-                text-gray-800 dark:text-gray-100
-                placeholder-gray-400 dark:placeholder-gray-500
+                class="w-full rounded-lg border-neutral-300 dark:border-neutral-600
+                bg-white dark:bg-neutral-800
+                text-neutral-800 dark:text-neutral-100
+                placeholder-neutral-400 dark:placeholder-neutral-500
                 shadow-sm focus:ring focus:ring-primary/30 focus:border-primary text-sm"
             />
         </div>
@@ -21,9 +21,9 @@
         <div class="relative" x-data="{ open: false }" @click.outside="open = false">
             <button
                 @click="open = !open"
-                class="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600
-                       bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 shadow-sm
-                       hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600
+                       bg-white dark:bg-neutral-800 text-sm text-neutral-700 dark:text-neutral-300 shadow-sm
+                       hover:bg-neutral-50 dark:hover:bg-neutral-700 transition"
             >
                 {{ __('Categories') }}
                 @if (count($selectedCategories))
@@ -39,15 +39,15 @@
             <div
                 x-show="open"
                 x-cloak
-                class="absolute right-0 z-20 mt-1 w-52 bg-white dark:bg-gray-800 border border-gray-200
-                       dark:border-gray-700 rounded-lg shadow-lg py-1"
+                class="absolute right-0 z-20 mt-1 w-52 bg-white dark:bg-neutral-800 border border-neutral-200
+                       dark:border-neutral-700 rounded-lg shadow-lg py-1"
             >
                 @foreach ($categories as $category)
                     <button
                         wire:click="toggleCategory({{ $category->id }})"
                         class="w-full flex items-center gap-3 px-4 py-2 text-sm text-left
-                               hover:bg-gray-50 dark:hover:bg-gray-700 transition
-                               {{ in_array($category->id, $selectedCategories) ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300' }}"
+                               hover:bg-neutral-50 dark:hover:bg-neutral-700 transition
+                               {{ in_array($category->id, $selectedCategories) ? 'font-semibold text-neutral-900 dark:text-white' : 'text-neutral-700 dark:text-neutral-300' }}"
                     >
                         <span class="w-2.5 h-2.5 rounded-full flex-shrink-0"
                               style="background-color: {{ $category->color }}"></span>
@@ -61,10 +61,10 @@
                 @endforeach
 
                 @if (count($selectedCategories))
-                    <div class="border-t border-gray-100 dark:border-gray-700 mt-1 pt-1">
+                    <div class="border-t border-neutral-100 dark:border-neutral-700 mt-1 pt-1">
                         <button
                             wire:click="clearFilters"
-                            class="w-full px-4 py-2 text-sm text-left text-error hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                            class="w-full px-4 py-2 text-sm text-left text-error hover:bg-neutral-50 dark:hover:bg-neutral-700 transition"
                         >
                             {{ __('Clear filters') }}
                         </button>
@@ -75,7 +75,7 @@
     </div>
 
     {{-- Results summary --}}
-    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+    <p class="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
         {{ $products->count() }} {{ __('products') }}
         @if ($city) · {{ $city->name }} @endif
         · {{ $days }}-{{ __('day average') }}

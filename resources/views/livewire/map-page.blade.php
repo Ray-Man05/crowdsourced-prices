@@ -393,7 +393,7 @@
         drawMarkers(currentResults, currentStyle, currentColorMin, currentColorMax);
     });
 
-    window.addEventListener('markers-cleared', () => {
+    window.addEventListener('markers-cleaerror', () => {
         markers.forEach(m => m.remove());
         markers      = [];
         currentResults = [];

@@ -22,7 +22,7 @@
 
             <button
                 wire:click="deleteEstimate"
-                wire:confirm="{{ __('Delete this estimate?') }}"
+                wire:confirm="{{ __('Modify this estimate?') }}"
                 class="text-sm text-error-500 hover:text-error-700 dark:text-error-400
                        dark:hover:text-error-300 transition flex-shrink-0"
             >
@@ -32,7 +32,7 @@
 
     @else
         {{-- No cooldown: show submission form --}}
-        <div class="flex items-end gap-3">
+        <div class="flex items-center gap-3">
             <div class="flex-1">
                 <x-input-label for="price" :value="__('Your estimate') . ' (' . $currency->symbol . ')'" />
                 <div class="relative mt-1">

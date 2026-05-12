@@ -23,15 +23,18 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
+    public const LOCATION_COOLDOWN_DAYS = 7;
+
     protected $fillable = [
         'name',
         'email',
         'password',
-        'role', 
-        'locale', 
+        'role',
+        'locale',
         'theme',
-        'city_id', 
+        'city_id',
         'currency_id',
+        'location_updated_at',
     ];
 
     public function city(): BelongsTo
@@ -79,9 +82,24 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'email_verified_at'    => 'datetime',
+            'location_updated_at'  => 'datetime',
+            'password'             => 'hashed',
         ];
+    }
+
+    public function locationCooldownEndsAt(): ?\Illuminate\Support\Carbon
+    {
+        if (!$this->location_updated_at) {
+            return null;
+        }
+        $endsAt = $this->location_updated_at->copy()->addDays(static::LOCATION_COOLDOWN_DAYS);
+        return $endsAt->isFuture() ? $endsAt : null;
+    }
+
+    public function canUpdateLocation(): bool
+    {
+        return $this->locationCooldownEndsAt() === null;
     }
     public function latestEstimateFor(Product $product): ?PriceEstimate
     {

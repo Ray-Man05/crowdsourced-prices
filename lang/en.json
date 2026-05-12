@@ -144,5 +144,12 @@
     "No unit": "No unit",
     "Unit (optional)": "Unit (optional)",
     "Select a category": "Select a category",
-    "FR": "FR"
+    "FR": "FR",
+
+    "Currency": "Currency",
+    "Select a currency": "Select a currency",
+    "Location & Currency": "Location & Currency",
+    "Change where you're located and your preferred currency.": "Change where you're located and your preferred currency.",
+    "This can only be changed once per week.": "This can only be changed once per week.",
+    "Locked until :date.": "Locked until :date."
 }

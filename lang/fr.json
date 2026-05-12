@@ -144,5 +144,12 @@
     "No unit": "Sans unité",
     "Unit (optional)": "Unité (facultatif)",
     "Select a category": "Sélectionnez une catégorie",
-    "FR": "FR"
+    "FR": "FR",
+
+    "Currency": "Devise",
+    "Select a currency": "Sélectionnez une devise",
+    "Location & Currency": "Localisation et devise",
+    "Change where you're located and your preferred currency.": "Modifiez votre localisation et votre devise préférée.",
+    "This can only be changed once per week.": "Ces informations ne peuvent être modifiées qu'une fois par semaine.",
+    "Locked until :date.": "Verrouillé jusqu'au :date."
 }

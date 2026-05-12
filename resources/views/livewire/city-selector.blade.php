@@ -2,9 +2,11 @@
     x-data="{
         open: false,
         search: '',
-        selectedCityId: null,
-        selectedCityName: '',
-        selectedCountryId: null,
+        selectedCityId: {{ $this->selectedCityId ?? 'null' }},
+        selectedCityName: @js($initialCityName),
+        selectedCountryId: {{ $this->selectedCountryId ?? 'null' }},
+        placeholderSearch: @js(__('Type to search...')),
+        placeholderSelect: @js(__('Select a country first')),
         cities: {{ Js::from($cities) }},
 
         get filteredCities() {
@@ -22,7 +24,6 @@
             this.selectedCityName = city.name;
             this.search           = '';
             this.open             = false;
-            $wire.selectCity(city.id);
         },
 
         onCountryChange(countryId) {
@@ -31,7 +32,7 @@
             this.selectedCityName  = '';
             this.search            = '';
             this.open              = false;
-            $wire.set('selectedCityId', null);
+            $dispatch('country-changed', { countryId: this.selectedCountryId });
         },
 
         onFocus() {
@@ -47,6 +48,7 @@
         <x-input-label for="country" :value="__('Country')" />
         <select
             id="country"
+            x-init="$el.value = selectedCountryId || ''"
             @change="onCountryChange($event.target.value)"
             class="mt-1 block w-full border-neutral/50 rounded-md shadow-sm focus:ring focus:ring-primary/30"
         >
@@ -68,7 +70,7 @@
             @focus="onFocus"
             @input="search = $event.target.value; selectedCityName = ''; open = true"
             @click.outside="open = false; search = ''; $el.value = selectedCityName"
-            :placeholder="selectedCountryId ? '{{ __('Type to search...') }}' : '{{ __('Select a country first') }}'"
+            :placeholder="selectedCountryId ? placeholderSearch : placeholderSelect"
             autocomplete="off"
             :disabled="!selectedCountryId"
             class="mt-1 block w-full border-neutral/50 rounded-md shadow-sm focus:ring focus:ring-primary/30
@@ -84,7 +86,7 @@
 
         <ul
             x-show="open && filteredCities.length > 0"
-            x-cloak
+            style="display: none"
             class="absolute z-10 mt-1 w-full bg-white border border-neutral/20 rounded-md shadow-lg max-h-56 overflow-y-auto"
         >
             <template x-for="city in filteredCities" :key="city.id">

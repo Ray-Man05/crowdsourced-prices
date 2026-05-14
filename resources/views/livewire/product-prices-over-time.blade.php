@@ -1,18 +1,26 @@
-<div class="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200
-            dark:border-neutral-700 p-5 shadow-sm">
+<div class="bg-surface-card rounded-2xl border border-neutral-200 dark:border-white/[0.06] shadow-card overflow-hidden">
 
-    {{-- Controls --}}
-    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <h2 class="text-base font-semibold text-neutral-800 dark:text-neutral-100">
-            {{ __('Price over time') }} / {{ $product->unit->symbol }}
+    {{-- Header --}}
+    <div class="px-5 py-4 border-b border-neutral-100 dark:border-white/[0.05]
+                flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
+            {{ __('Price over time') }}
+            @if ($product->unit)
+                <span class="text-neutral-400 dark:text-neutral-500 font-normal ml-1">
+                    / {{ $product->unit->symbol }}
+                </span>
+            @endif
         </h2>
-        <div class="flex flex-wrap items-center gap-4">
-            <div class="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-                <label>{{ __('Period') }}</label>
+
+        <div class="flex flex-wrap items-center gap-3">
+            {{-- Period selector --}}
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-neutral-500 dark:text-neutral-400">{{ __('Period') }}</label>
                 <select wire:model.live="days"
-                        class="rounded-lg border-neutral-300 dark:border-neutral-600
-                               bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100
-                               text-sm focus:ring focus:ring-accent-300">
+                        class="text-xs rounded-lg border-neutral-300 dark:border-white/[0.1]
+                               bg-neutral-50 dark:bg-[#1e2231] text-neutral-800 dark:text-neutral-100
+                               focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 transition
+                               py-1.5">
                     <option value="30">30 {{ __('days') }}</option>
                     <option value="90">90 {{ __('days') }}</option>
                     <option value="180">180 {{ __('days') }}</option>
@@ -20,58 +28,60 @@
                     <option value="0">{{ __('All time') }}</option>
                 </select>
             </div>
-            <label class="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 cursor-pointer">
-                <input type="checkbox" wire:model.live="allCities"
-                       class="rounded border-neutral-300 dark:border-neutral-600 text-accent-600"/>
-                {{ __('All cities') }}
+
+            {{-- All cities toggle --}}
+            <label class="flex items-center gap-2 cursor-pointer group">
+                <div class="relative">
+                    <input type="checkbox" wire:model.live="allCities" class="sr-only peer"/>
+                    <div class="w-8 h-4 rounded-full bg-neutral-300 dark:bg-neutral-600
+                                peer-checked:bg-primary-500 transition-colors"></div>
+                    <div class="absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white
+                                shadow-sm transition-transform peer-checked:translate-x-4"></div>
+                </div>
+                <span class="text-xs text-neutral-600 dark:text-neutral-400 select-none">
+                    {{ __('All cities') }}
+                </span>
             </label>
         </div>
     </div>
 
-    @if ($rows->isEmpty())
-        <p class="text-center text-sm text-neutral-400 dark:text-neutral-500 py-12">
-            {{ __('No data for this period') }}
-        </p>
-    @else
-        <div class="relative h-64">
-            <canvas id="price-chart"></canvas>
-        </div>
-    @endif
+    {{-- Chart --}}
+    <div class="p-5">
+        @if ($rows->isEmpty())
+            <div class="h-52 flex flex-col items-center justify-center">
+                <svg class="h-8 w-8 text-neutral-300 dark:text-neutral-600 mb-2"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                <p class="text-sm text-neutral-400 dark:text-neutral-500">
+                    {{ __('No data for this period') }}
+                </p>
+            </div>
+        @else
+            <div class="relative h-64 transition-opacity duration-200" wire:loading.class="opacity-40">
+                <canvas id="price-chart"></canvas>
+            </div>
+        @endif
+    </div>
 
 </div>
 
-{{-- @assets
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-@endassets --}}
-
 @script
 <script>
-
-    function getPrimary() {
-        const val = getComputedStyle(document.documentElement)
-            .getPropertyValue('--color-theme-accent')
-            .trim();
-        return val && val !== 'auto' ? val : '#00d3f2';
-    }
-
     function drawChart(labels, values, symbol, categoryColor) {
         const existing = Chart.getChart('price-chart');
         if (existing) existing.destroy();
 
-        // const primary = categoryColor
-        //     || getComputedStyle(document.documentElement)
-        //         .getPropertyValue('--color-theme-primary').trim()
-        //     || '#6366f1';
-
-        const primary = getPrimary() || categoryColor;
-        
-        console.log(primary);
-        console.log('efe')
-
         const canvas = document.getElementById('price-chart');
         if (!canvas) return;
 
-        const isDark = document.documentElement.classList.contains('dark');
+        const isDark  = document.documentElement.classList.contains('dark');
+        const primary = '#10b981'; // emerald-500, matches the primary token
+
+        const gridColor  = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+        const tickColor  = isDark ? '#6b7280' : '#9ca3af';
+        const labelColor = isDark ? '#9ca3af' : '#6b7280';
 
         new Chart(canvas, {
             type: 'line',
@@ -80,13 +90,13 @@
                 datasets: [{
                     data:             values,
                     borderColor:      primary,
-                    // backgroundColor:  'rgba(99, 102, 241, 0.08)',
-                    backgroundColor:  primary + '14',
+                    backgroundColor:  primary + '18',
                     borderWidth:      2,
-                    pointRadius:      3,
+                    pointRadius:      2,
                     pointHoverRadius: 5,
+                    pointBackgroundColor: primary,
                     fill:             true,
-                    tension:          0.3,
+                    tension:          0.4,
                 }],
             },
             options: {
@@ -95,48 +105,41 @@
                 plugins: {
                     legend: { display: false },
                     tooltip: {
+                        backgroundColor: isDark ? '#1a1e2d' : '#ffffff',
+                        titleColor:      isDark ? '#e5e7eb' : '#111827',
+                        bodyColor:       isDark ? '#9ca3af' : '#6b7280',
+                        borderColor:     isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)',
+                        borderWidth:     1,
+                        padding:         10,
                         callbacks: {
-                            label: ctx => symbol + ctx.parsed.y.toFixed(2),
+                            label: ctx => ' ' + symbol + ctx.parsed.y.toFixed(2),
                         },
                     },
                 },
                 scales: {
                     x: {
-                        title: {
-                            display: true,
-                            text: 'Date',  
-                            color: isDark ? '#9ca3af' : '#374151',
-                            font: {
-                                size: 12,
-                                weight: 'bold'
-                            }
+                        ticks: {
+                            color:          tickColor,
+                            maxTicksLimit:  8,
+                            maxRotation:    0,
+                            font:           { size: 11 },
                         },
-                        ticks: { color: isDark ? '#9ca3af' : '#6b7280', maxTicksLimit: 10, maxRotation: 0 },
-                        grid:  { color: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' },
+                        grid:  { color: gridColor, drawBorder: false },
                     },
-                    y: {        
-                        title: {
-                            display: true,
-                            text: 'Price',
-                            color: isDark ? '#9ca3af' : '#374151',
-                            font: {
-                                size: 12,
-                                weight: 'bold'
-                            }
-                        },
+                    y: {
                         beginAtZero: true,
                         ticks: {
-                            color:    isDark ? '#9ca3af' : '#6b7280',
+                            color:    tickColor,
+                            font:     { size: 11 },
                             callback: v => symbol + v.toFixed(2),
                         },
-                        grid: { color: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' },
+                        grid: { color: gridColor, drawBorder: false },
                     },
                 },
             },
         });
     }
 
-    // Initial draw from server-rendered data
     drawChart(
         @json($rows->pluck('date')),
         @json($rows->pluck('average')),
@@ -144,12 +147,13 @@
         @json($product->category->color)
     );
 
-    // Redraw when PHP dispatches updated data
     $wire.$on('chart-data-updated', ({ rows, categoryColor }) => {
-        const labels = rows.map(r => r.date);
-        const values = rows.map(r => r.average);
-        const symbol = rows.length ? rows[0].symbol : '';
-        drawChart(labels, values, symbol, categoryColor);
+        drawChart(
+            rows.map(r => r.date),
+            rows.map(r => r.average),
+            rows.length ? rows[0].symbol : '',
+            categoryColor
+        );
     });
 </script>
 @endscript

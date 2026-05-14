@@ -1,17 +1,18 @@
 <?php
 
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserPreferencesController;
 use App\Livewire\ProductCatalog;
-
 use App\Livewire\ProductDetail;
 use App\Livewire\MapPage;
-// use App\Livewire\EstimateSubmission;
-
 use App\Livewire\Admin\CategoryManager;
 use App\Livewire\Admin\UnitManager;
 use App\Livewire\Admin\ProductManager;
+
+// Public landing page
+Route::get('/', [LandingController::class, 'show'])->name('landing');
 
 // Guest Routes (Preferences - accessible before auth)
 Route::get('/preferences/locale/{locale}', [UserPreferencesController::class, 'switch_locale'])
@@ -22,7 +23,7 @@ Route::post('/preferences/theme/{theme}', [UserPreferencesController::class, 'sw
 // Authenticated Routes Group
 Route::middleware('auth')->group(function () {
 
-    Route::get('/', ProductCatalog::class)->name('home');
+    Route::get('/catalog', ProductCatalog::class)->name('catalog');
     Route::get('/map', MapPage::class)->name('map');
     Route::get('/products/{product}', ProductDetail::class)->name('products.show');
 

@@ -2,3 +2,61 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+    --surface-page:   #f3f4f6;
+    --surface-card:   #ffffff;
+    --surface-raised: #ffffff;
+    --shadow-card:    0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+    --shadow-raised:  0 4px 16px -2px rgb(0 0 0 / 0.12), 0 2px 6px -2px rgb(0 0 0 / 0.08);
+    --border-subtle:  rgb(229 231 235);      /* neutral-200 */
+}
+
+.dark {
+    color-scheme: dark;
+    --surface-page:   #0a0c12;
+    --surface-card:   #12151f;
+    --surface-raised: #1a1e2d;
+    --shadow-card:    0 1px 4px 0 rgb(0 0 0 / 0.5);
+    --shadow-raised:  0 4px 20px -2px rgb(0 0 0 / 0.65);
+    --border-subtle:  rgb(255 255 255 / 0.07);
+}
+
+@layer utilities {
+    .bg-surface-page   { background-color: var(--surface-page); }
+    .bg-surface-card   { background-color: var(--surface-card); }
+    .bg-surface-raised { background-color: var(--surface-raised); }
+    .shadow-card       { box-shadow: var(--shadow-card); }
+    .shadow-card-md    { box-shadow: var(--shadow-raised); }
+    .border-subtle     { border-color: var(--border-subtle); }
+}
+
+@layer components {
+    /* Smooth wire:loading fade */
+    .wire-fade {
+        transition: opacity 200ms ease;
+    }
+}
+
+/* ─── Mobile / Touch optimizations ─── */
+@media (max-width: 639px) {
+    /* Minimum touch target size */
+    button, a, [role="button"], select, input[type="checkbox"], input[type="radio"] {
+        min-height: 44px;
+    }
+
+    /* Inputs: larger touch area */
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="password"],
+    select,
+    textarea {
+        font-size: 16px; /* prevents iOS zoom on focus */
+        min-height: 44px;
+    }
+
+    /* Slightly larger base line-height on small screens */
+    body {
+        line-height: 1.6;
+    }
+}

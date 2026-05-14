@@ -139,6 +139,8 @@
                                 :city="$city"
                                 :currency="$currency"
                                 :days="$days"
+                                :average-price="$bulkMetrics[$product->id]['average'] ?? null"
+                                :average3x-days-price="$bulkMetrics[$product->id]['average3x'] ?? null"
                             />
                         @endif
                     @endforeach

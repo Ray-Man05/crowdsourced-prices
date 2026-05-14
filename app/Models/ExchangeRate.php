@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class ExchangeRate extends Model
 {
@@ -45,5 +46,8 @@ class ExchangeRate extends Model
             ['from_currency_id' => $to->id, 'to_currency_id' => $from->id],
             ['rate' => 1.0 / $rate, 'fetched_at' => $now],
         );
+
+        Cache::forget("exchange_rate:{$from->id}:{$to->id}");
+        Cache::forget("exchange_rate:{$to->id}:{$from->id}");
     }
 }

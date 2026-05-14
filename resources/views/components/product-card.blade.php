@@ -54,8 +54,9 @@
         :class="hover ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'"
     >
         @php
-            $isHigher = $average3xDaysPrice !== null && $averagePrice > $average3xDaysPrice;
-            $isLower  = $average3xDaysPrice !== null && $averagePrice < $average3xDaysPrice;
+            $threshold_percent = 0.01;
+            $isHigher = $average3xDaysPrice !== null && $averagePrice > $average3xDaysPrice * (1 + $threshold_percent);
+            $isLower  = $average3xDaysPrice !== null && $averagePrice < $average3xDaysPrice * ((1 - $threshold_percent));
         @endphp
 
         <h3 class="text-xs font-semibold text-neutral-700 dark:text-neutral-300 tracking-tight">

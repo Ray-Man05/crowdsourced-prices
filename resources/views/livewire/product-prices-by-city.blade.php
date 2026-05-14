@@ -13,6 +13,22 @@
             @endif
         </div>
 
+        {{-- Controls --}}
+        <div class="flex flex-wrap items-center gap-3">
+
+            {{-- Period selector --}}
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-neutral-500 dark:text-neutral-400">{{ __('Period') }}</label>
+                <select wire:model.live="days"
+                        class="text-xs rounded-lg border-neutral-300 dark:border-white/[0.1]
+                               bg-neutral-50 dark:bg-[#1e2231] text-neutral-800 dark:text-neutral-100
+                               focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 transition
+                               py-1.5">
+                    <option value="365">{{ __('1 year') }}</option>
+                    <option value="0">{{ __('All time') }}</option>
+                </select>
+            </div>
+
         {{-- Filters --}}
         <div class="flex flex-wrap items-center gap-2">
             <div class="relative">
@@ -61,6 +77,7 @@
                 </button>
             @endif
         </div>
+        </div>{{-- end controls --}}
     </div>
 
     @if ($cityStats->isEmpty())

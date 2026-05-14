@@ -9,6 +9,7 @@ use App\Models\PriceEstimate;
 use App\Models\Product;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class PriceAggregator
 {
@@ -76,8 +77,11 @@ class PriceAggregator
         Currency $currency,
         int      $days = 30,
     ): ?float {
-        $tagged = $this->taggedEstimates($product, $currency, $days, countryId: $country->id);
-        return $this->meanOfCityAverages($tagged);
+        $key = $this->cacheKey('countryAverage', $product->id, $currency->id, $days, $country->id);
+        return Cache::remember($key, 3600, function () use ($product, $country, $currency, $days) {
+            $tagged = $this->taggedEstimates($product, $currency, $days, countryId: $country->id);
+            return $this->meanOfCityAverages($tagged);
+        });
     }
 
     /**
@@ -89,8 +93,11 @@ class PriceAggregator
         Currency $currency,
         int      $days = 30,
     ): ?float {
-        $tagged = $this->taggedEstimates($product, $currency, $days);
-        return $this->meanOfCityAverages($tagged);
+        $key = $this->cacheKey('globalAverage', $product->id, $currency->id, $days);
+        return Cache::remember($key, 3600, function () use ($product, $currency, $days) {
+            $tagged = $this->taggedEstimates($product, $currency, $days);
+            return $this->meanOfCityAverages($tagged);
+        });
     }
 
     // -------------------------------------------------------------------------
@@ -114,17 +121,20 @@ class PriceAggregator
         Currency $currency,
         int      $days = 0,
     ): Collection {
-        return $this->taggedEstimates($product, $currency, $days)
-            ->groupBy('city_id')
-            ->map(fn(Collection $group) => [
-                'city'        => $group->first()->city,
-                'average'     => $this->averageOfClean($group),
-                'submissions' => $group->where('is_outlier', false)->count(),
-                'symbol'      => $currency->symbol,
-            ])
-            ->filter(fn($r) => $r['average'] !== null && $r['city'] !== null)
-            ->sortBy('average')
-            ->values();
+        $key = $this->cacheKey('cityBreakdown', $product->id, $currency->id, $days);
+        return Cache::remember($key, 3600, function () use ($product, $currency, $days) {
+            return $this->taggedEstimates($product, $currency, $days)
+                ->groupBy('city_id')
+                ->map(fn(Collection $group) => [
+                    'city'        => $group->first()->city,
+                    'average'     => $this->averageOfClean($group),
+                    'submissions' => $group->where('is_outlier', false)->count(),
+                    'symbol'      => $currency->symbol,
+                ])
+                ->filter(fn($r) => $r['average'] !== null && $r['city'] !== null)
+                ->sortBy('average')
+                ->values();
+        });
     }
 
     /**
@@ -145,23 +155,26 @@ class PriceAggregator
         Currency $currency,
         int      $days = 0,
     ): Collection {
-        return $this->cityBreakdown($product, $currency, $days)
-            ->groupBy(fn($r) => $r['city']->country_id)
-            ->map(function (Collection $group) use ($currency) {
-                $cityAverages = $group->pluck('average')->filter();
+        $key = $this->cacheKey('countryBreakdown', $product->id, $currency->id, $days);
+        return Cache::remember($key, 3600, function () use ($product, $currency, $days) {
+            return $this->cityBreakdown($product, $currency, $days)
+                ->groupBy(fn($r) => $r['city']->country_id)
+                ->map(function (Collection $group) use ($currency) {
+                    $cityAverages = $group->pluck('average')->filter();
 
-                return [
-                    'country' => $group->first()['city']->country,
-                    'average' => $cityAverages->isEmpty()
-                        ? null
-                        : round($cityAverages->average(), 2),
-                    'cities'  => $group->count(),
-                    'symbol'  => $currency->symbol,
-                ];
-            })
-            ->filter(fn($r) => $r['average'] !== null && $r['country'] !== null)
-            ->sortBy('average')
-            ->values();
+                    return [
+                        'country' => $group->first()['city']->country,
+                        'average' => $cityAverages->isEmpty()
+                            ? null
+                            : round($cityAverages->average(), 2),
+                        'cities'  => $group->count(),
+                        'symbol'  => $currency->symbol,
+                    ];
+                })
+                ->filter(fn($r) => $r['average'] !== null && $r['country'] !== null)
+                ->sortBy('average')
+                ->values();
+        });
     }
 
     /**
@@ -228,6 +241,86 @@ class PriceAggregator
         return $this->taggedEstimatesForScope($product, $currency, $days, $scope)
             ->groupBy(fn($e) => $e->recorded_at->toDateString())
             ->sortKeys();
+    }
+
+    // -------------------------------------------------------------------------
+    // Public API — bulk catalog metrics
+    // -------------------------------------------------------------------------
+
+    /**
+     * Compute city-scoped price metrics for multiple products in a single DB query.
+     * Returns a plain array keyed by product ID with 'average' and 'average3x' values.
+     *
+     * This is the catalog-page fast path: one query replaces N×2 individual aggregator
+     * calls, one per product × two windows ($days and 3×$days).
+     *
+     * Outlier detection uses city-level bounds from all-time data per product.
+     * The country/global fallback is intentionally omitted here — when the sample
+     * is too small for city bounds, all estimates are treated as clean, which is the
+     * same semantics as having no fallback available.
+     *
+     * @param  Collection<Product>  $products
+     * @return array<int, array{average: ?float, average3x: ?float}>  Keyed by product_id.
+     */
+    public function bulkCityMetrics(
+        Collection $products,
+        City       $city,
+        Currency   $currency,
+        int        $days = 30,
+    ): array {
+        if ($products->isEmpty()) {
+            return [];
+        }
+
+        $productIds = $products->pluck('id');
+
+        $allEstimates = PriceEstimate::whereIn('product_id', $productIds)
+            ->where('city_id', $city->id)
+            ->with('currency')
+            ->get();
+
+        $convertedById = $allEstimates->mapWithKeys(
+            fn($e) => [$e->id => $e->currency->convert($e->price, $currency)]
+        );
+
+        $cutoff1x = $days > 0 ? Carbon::now()->subDays($days) : null;
+        $cutoff3x = $days > 0 ? Carbon::now()->subDays($days * 3) : null;
+
+        $byProduct = $allEstimates->groupBy('product_id');
+        $result    = [];
+
+        foreach ($products as $product) {
+            $group = $byProduct->get($product->id, collect());
+
+            if ($group->isEmpty()) {
+                $result[$product->id] = ['average' => null, 'average3x' => null];
+                continue;
+            }
+
+            $allTimePrices = $group->map(fn($e) => $convertedById[$e->id])->filter()->values();
+            $bounds        = $this->computeBounds($allTimePrices);
+
+            $tagged = $group->each(function ($e) use ($convertedById, $bounds) {
+                $e->converted_price = $convertedById[$e->id] ?? null;
+                $e->is_outlier      = $e->converted_price === null
+                    || ($bounds !== null && !$this->withinBounds($e->converted_price, $bounds));
+            });
+
+            $tagged3x = $cutoff3x
+                ? $tagged->filter(fn($e) => $e->recorded_at >= $cutoff3x)
+                : $tagged;
+
+            $tagged1x = $cutoff1x
+                ? $tagged3x->filter(fn($e) => $e->recorded_at >= $cutoff1x)
+                : $tagged3x;
+
+            $result[$product->id] = [
+                'average'   => $this->averageOfClean($tagged1x),
+                'average3x' => $this->averageOfClean($tagged3x),
+            ];
+        }
+
+        return $result;
     }
 
     // -------------------------------------------------------------------------
@@ -345,12 +438,37 @@ class PriceAggregator
         ?int    $cityId    = null,
         ?int    $countryId = null,
     ): Collection {
-        return PriceEstimate::where('product_id', $product->id)
-            ->when($days > 0,    fn($q) => $q->where('recorded_at', '>=', Carbon::now()->subDays($days)))
-            ->when($cityId,      fn($q) => $q->where('city_id', $cityId))
-            ->when($countryId,   fn($q) => $q->whereHas('city', fn($q) => $q->where('country_id', $countryId)))
+        return PriceEstimate::where('price_estimates.product_id', $product->id)
+            ->when($days > 0,    fn($q) => $q->where('price_estimates.recorded_at', '>=', Carbon::now()->subDays($days)))
+            ->when($cityId,      fn($q) => $q->where('price_estimates.city_id', $cityId))
+            ->when($countryId,   fn($q) => $q
+                ->join('cities', 'cities.id', '=', 'price_estimates.city_id')
+                ->where('cities.country_id', $countryId)
+                ->select('price_estimates.*')
+            )
             ->with(['currency', 'city.country'])
             ->get();
+    }
+
+    // -------------------------------------------------------------------------
+    // Private — cache key helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Build a versioned cache key for a public aggregator method.
+     * The version is a counter stored in cache and bumped whenever estimates
+     * for this product change (via PriceEstimate model events).
+     */
+    private function cacheKey(
+        string $method,
+        int    $productId,
+        int    $currencyId,
+        int    $days,
+        ?int   $extraId = null,
+    ): string {
+        $v     = (int) Cache::get("agg_v:{$productId}", 0);
+        $extra = $extraId !== null ? ":{$extraId}" : '';
+        return "agg:{$method}:{$productId}:{$currencyId}:{$days}{$extra}:v{$v}";
     }
 
     // -------------------------------------------------------------------------
@@ -462,7 +580,7 @@ class PriceAggregator
         // A price that is within IQR_MIN_WIDTH_FRACTION of the median is always clean.
         $minHalfWidth = $median * self::IQR_MIN_WIDTH_FRACTION;
 
-        
+
 
         if ($iqr == 0.0) return ['min' => -INF, 'max' => INF];
 

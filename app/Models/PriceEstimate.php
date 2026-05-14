@@ -7,11 +7,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 Use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class PriceEstimate extends Model
 {
-
     public const ESTIMATE_COOLDOWN_DAYS = 7;
+
+    protected static function booted(): void
+    {
+        // Bump the cache version for the product whenever estimates change so that
+        // all aggregator cache entries for that product are effectively invalidated.
+        static::created(fn(self $e) => Cache::increment("agg_v:{$e->product_id}"));
+        static::deleted(fn(self $e) => Cache::increment("agg_v:{$e->product_id}"));
+    }
 
     protected $fillable = ['price', 'user_id', 'product_id', 'currency_id', 'city_id', 'recorded_at'];
 

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 
 class Currency extends Model
 {
@@ -44,11 +45,19 @@ class Currency extends Model
             return 1.0;
         }
 
+        $key = "exchange_rate:{$this->id}:{$target->id}";
+
+        if (Cache::has($key)) {
+            return Cache::get($key);
+        }
+
         $rate = ExchangeRate::where('from_currency_id', $this->id)
             ->where('to_currency_id', $target->id)
-            ->first();
+            ->value('rate');
 
-        return $rate?->rate;
+        Cache::forever($key, $rate);
+
+        return $rate;
     }
 
     /**

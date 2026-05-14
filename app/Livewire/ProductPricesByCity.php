@@ -2,21 +2,20 @@
 
 namespace App\Livewire;
 
-use App\Models\PriceEstimate;
 use App\Models\Product;
 use Illuminate\Support\Collection;
-use Livewire\Component;
-
 use Livewire\Attributes\On;
+use Livewire\Component;
 use App\Services\PriceAggregator;
 
 class ProductPricesByCity extends Component
 {
     public Product $product;
-    public string  $citySearch = '';
+    public string  $citySearch    = '';
     public string  $countrySearch = '';
-    public string  $sortBy     = 'price';
-    public string  $sortDir    = 'asc';
+    public string  $sortBy        = 'price';
+    public string  $sortDir       = 'asc';
+    public int     $days          = 365;
 
     public function toggleSort(string $column): void
     {
@@ -28,18 +27,27 @@ class ProductPricesByCity extends Component
         }
     }
 
-    // List of [city name, number of submissions, average price] for the product currently selected
     public function getCityStatsProperty(): Collection
     {
-        $currency  = auth()->user()->effectiveCurrency();
-        $currency  = auth()->user()->effectiveCurrency();
+        $currency   = auth()->user()->effectiveCurrency();
         $aggregator = app(PriceAggregator::class);
 
-        $stats = $aggregator->cityBreakdown($this->product, $currency)
-            ->filter(fn($r) => !$this->citySearch || str_contains(
-                strtolower($r['city']->name),
-                strtolower($this->citySearch)
-            ));
+        $stats = $aggregator->cityBreakdown($this->product, $currency, $this->days)
+            ->filter(function ($r) {
+                if ($this->citySearch && !str_contains(
+                    strtolower($r['city']->name),
+                    strtolower($this->citySearch)
+                )) {
+                    return false;
+                }
+                if ($this->countrySearch && !str_contains(
+                    strtolower($r['city']->country->name ?? ''),
+                    strtolower($this->countrySearch)
+                )) {
+                    return false;
+                }
+                return true;
+            });
 
         $sorted = match ($this->sortBy) {
             'name'        => $stats->sortBy(fn($r) => $r['city']->name, SORT_STRING, $this->sortDir === 'desc'),
@@ -49,7 +57,6 @@ class ProductPricesByCity extends Component
 
         return $sorted->values();
     }
-
 
     public function render()
     {
@@ -62,4 +69,4 @@ class ProductPricesByCity extends Component
 
     #[On('estimate-changed')]
     public function refresh(): void {}
-    }
+}

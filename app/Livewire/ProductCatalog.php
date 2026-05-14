@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\City;
 use App\Models\Currency;
 use App\Models\Product;
+use App\Services\PriceAggregator;
 use Illuminate\Support\Collection;
 use Livewire\Component;
 
@@ -53,9 +54,10 @@ class ProductCatalog extends Component
     {
         return Product::with(['category', 'unit'])
             ->when($this->search, function ($query) {
-                // Search across all locale values in the JSON column
-                $query->whereRaw("LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, '$.en'))) LIKE ?", ['%' . strtolower($this->search) . '%'])
+                $query->where(function ($q) {
+                    $q->whereRaw("LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, '$.en'))) LIKE ?", ['%' . strtolower($this->search) . '%'])
                       ->orWhereRaw("LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, '$.fr'))) LIKE ?", ['%' . strtolower($this->search) . '%']);
+                });
             })
             ->when($this->selectedCategories, fn($query) =>
                 $query->whereIn('category_id', $this->selectedCategories)
@@ -67,13 +69,19 @@ class ProductCatalog extends Component
     {
         $city     = $this->cityId ? City::find($this->cityId) : null;
         $currency = auth()->user()->effectiveCurrency();
+        $products = $this->filteredProducts;
+
+        $bulkMetrics = ($city && $currency)
+            ? app(PriceAggregator::class)->bulkCityMetrics($products, $city, $currency, $this->days)
+            : [];
 
         return view('livewire.product-catalog', [
-            'products'         => $this->filteredProducts,
-            'categories'       => Category::orderBy('name')->get(),
-            'city'             => $city,
-            'currency'         => $currency,
-            'days'             => $this->days,
+            'products'    => $products,
+            'bulkMetrics' => $bulkMetrics,
+            'categories'  => Category::orderBy('name')->get(),
+            'city'        => $city,
+            'currency'    => $currency,
+            'days'        => $this->days,
         ])->layout('layouts.app');
     }
 }

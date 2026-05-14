@@ -47,6 +47,7 @@
 
     {{-- Chart --}}
     <div class="p-5">
+        <div class="hidden bg-primary-500" id="primary-color-probe"></div>
         @if ($rows->isEmpty())
             <div class="h-52 flex flex-col items-center justify-center">
                 <svg class="h-8 w-8 text-neutral-300 dark:text-neutral-600 mb-2"
@@ -76,27 +77,29 @@
         const canvas = document.getElementById('price-chart');
         if (!canvas) return;
 
-        const isDark  = document.documentElement.classList.contains('dark');
-        const primary = '#10b981'; // emerald-500, matches the primary token
+        const probe       = document.getElementById('primary-color-probe');
+        const primary     = getComputedStyle(probe).backgroundColor;
+        const primaryFill = primary.replace('rgb(', 'rgba(').replace(')', ', 0.09)');
 
-        const gridColor  = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-        const tickColor  = isDark ? '#6b7280' : '#9ca3af';
-        const labelColor = isDark ? '#9ca3af' : '#6b7280';
+        const isDark = document.documentElement.classList.contains('dark');
+
+        const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+        const tickColor = isDark ? '#6b7280' : '#9ca3af';
 
         new Chart(canvas, {
             type: 'line',
             data: {
                 labels,
                 datasets: [{
-                    data:             values,
-                    borderColor:      primary,
-                    backgroundColor:  primary + '18',
-                    borderWidth:      2,
-                    pointRadius:      2,
-                    pointHoverRadius: 5,
+                    data:                 values,
+                    borderColor:          primary,
+                    backgroundColor:      primaryFill,
+                    borderWidth:          2,
+                    pointRadius:          2,
+                    pointHoverRadius:     5,
                     pointBackgroundColor: primary,
-                    fill:             true,
-                    tension:          0.4,
+                    fill:                 true,
+                    tension:              0.4,
                 }],
             },
             options: {
@@ -118,22 +121,13 @@
                 },
                 scales: {
                     x: {
-                        ticks: {
-                            color:          tickColor,
-                            maxTicksLimit:  8,
-                            maxRotation:    0,
-                            font:           { size: 11 },
-                        },
+                        ticks: { color: tickColor, maxTicksLimit: 8, maxRotation: 0, font: { size: 11 } },
                         grid:  { color: gridColor, drawBorder: false },
                     },
                     y: {
                         beginAtZero: true,
-                        ticks: {
-                            color:    tickColor,
-                            font:     { size: 11 },
-                            callback: v => symbol + v.toFixed(2),
-                        },
-                        grid: { color: gridColor, drawBorder: false },
+                        ticks: { color: tickColor, font: { size: 11 }, callback: v => symbol + v.toFixed(2) },
+                        grid:  { color: gridColor, drawBorder: false },
                     },
                 },
             },

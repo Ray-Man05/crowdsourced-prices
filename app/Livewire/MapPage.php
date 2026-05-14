@@ -13,8 +13,10 @@ class MapPage extends Component
     public array  $basket            = [];
     public int    $selectedProductId = 0;
     public float  $selectedQuantity  = 1;
-    public int    $days              = 30;
+    public int    $days              = 365;
     public string $error             = '';
+    public bool   $recomputeOnChange = false;
+    public bool   $resultsStale      = false;
 
     public string $colorScale  = 'green_red';
     public string $colorMin    = '#22c55e';
@@ -41,20 +43,27 @@ class MapPage extends Component
         if (isset($this->basket[$id])) {
             $this->basket[$id]['quantity'] += $this->selectedQuantity;
         } else {
-            $product = Product::with('unit')->find($id);
+            $product = Product::with(['unit', 'category'])->find($id);
             if (!$product) return;
 
             $this->basket[$id] = [
-                'product_id' => $id,
-                'name'       => $product->name,
-                'unit'       => $product->unit?->symbol ?? '',
-                'quantity'   => $this->selectedQuantity,
-                'category_color' => $product->category?->color ?? '#ffffff'
+                'product_id'     => $id,
+                'name'           => $product->name,
+                'unit'           => $product->unit?->symbol ?? '',
+                'quantity'       => $this->selectedQuantity,
+                'category_color' => $product->category?->color ?? '#ffffff',
             ];
         }
 
         $this->selectedProductId = 0;
         $this->selectedQuantity  = 1;
+        $this->dispatch('product-added-to-basket');
+
+        if ($this->recomputeOnChange) {
+            $this->compute();
+        } elseif (!empty($this->results)) {
+            $this->resultsStale = true;
+        }
     }
 
     public function removeFromBasket(int $productId): void
@@ -62,13 +71,38 @@ class MapPage extends Component
         unset($this->basket[$productId]);
 
         if (empty($this->basket)) {
-            $this->results = [];
+            $this->results      = [];
+            $this->resultsStale = false;
             $this->dispatch('markers-cleared');
+            return;
+        }
+
+        if ($this->recomputeOnChange) {
+            $this->compute();
+        } elseif (!empty($this->results)) {
+            $this->resultsStale = true;
+        }
+    }
+
+    public function updatedDays(): void
+    {
+        if ($this->recomputeOnChange) {
+            $this->compute();
+        } elseif (!empty($this->results)) {
+            $this->resultsStale = true;
+        }
+    }
+
+    public function updatedRecomputeOnChange(): void
+    {
+        if ($this->recomputeOnChange && $this->resultsStale) {
+            $this->compute();
         }
     }
 
     public function compute(): void
     {
+        $this->resultsStale = false;
         $this->error   = '';
         $this->results = [];
 
@@ -77,27 +111,53 @@ class MapPage extends Component
             return;
         }
 
-        $currency = auth()->user()->effectiveCurrency();
-        $cities   = City::with('country')->get();
-        $products = Product::findMany(array_column($this->basket, 'product_id'));
-        $results  = [];
+        $currency   = auth()->user()->effectiveCurrency();
+        $products   = Product::findMany(array_column($this->basket, 'product_id'));
         $aggregator = app(\App\Services\PriceAggregator::class);
 
-        foreach ($cities as $city) {
-            $total    = 0.0;
+        // [cityId => [productId => averagePrice]] — one bulk DB query instead of N×M calls
+        $metrics    = $aggregator->bulkMultiCityMetrics($products, $currency, $this->days);
+        $productIds = $products->pluck('id')->all();
 
-            foreach ($this->basket as $item) {
-                $product = $products->find($item['product_id']);
-                $avg = $aggregator->cityAverage($product, $city, $currency, $this->days);
-
-                if ($avg === null) {
+        // Keep only cities where every basket product has a price
+        $completeCityIds = [];
+        foreach ($metrics as $cityId => $productMap) {
+            foreach ($productIds as $pid) {
+                if (!isset($productMap[$pid])) {
                     continue 2;
                 }
-
-                $total += $avg * $item['quantity'];
             }
+            $completeCityIds[] = $cityId;
+        }
 
-            if ($total <= 0) continue;
+        if (empty($completeCityIds)) {
+            $this->error = __('No price data found for this basket.');
+            return;
+        }
+
+        $cities  = City::with('country')->whereIn('id', $completeCityIds)->get()->keyBy('id');
+        $results = [];
+
+        foreach ($completeCityIds as $cityId) {
+            $city       = $cities[$cityId];
+            $productMap = $metrics[$cityId];
+            $total      = 0.0;
+            $breakdown  = [];
+
+            foreach ($this->basket as $item) {
+                $pid      = $item['product_id'];
+                $avg      = $productMap[$pid];
+                $subtotal = $avg * $item['quantity'];
+                $total   += $subtotal;
+
+                $breakdown[] = [
+                    'name'     => $item['name'],
+                    'unit'     => $item['unit'] ?? '',
+                    'avg'      => round($avg, 2),
+                    'qty'      => $item['quantity'],
+                    'subtotal' => round($subtotal, 2),
+                ];
+            }
 
             $results[] = [
                 'city_id'   => $city->id,
@@ -106,13 +166,9 @@ class MapPage extends Component
                 'lat'       => $city->lat,
                 'lng'       => $city->lng,
                 'total'     => round($total, 2),
-                'symbol'    => $currency->symbol
+                'symbol'    => $currency->symbol,
+                'breakdown' => $breakdown,
             ];
-        }
-
-        if (empty($results)) {
-            $this->error = __('No price data found for this basket.');
-            // return;
         }
 
         $this->results = $results;

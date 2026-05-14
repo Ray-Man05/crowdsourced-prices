@@ -1,4 +1,5 @@
 <div x-data="{ sidebarOpen: window.innerWidth >= 640 }"
+     @keydown.window="if ($event.key === '[' && !$event.ctrlKey && !$event.metaKey && !['INPUT','TEXTAREA','SELECT'].includes($event.target.tagName)) { sidebarOpen = !sidebarOpen; setTimeout(() => window.dispatchEvent(new CustomEvent('sidebar-toggled')), 310); }"
      class="flex h-[calc(100vh-3.5rem)] overflow-hidden relative">
 
     {{-- Mobile backdrop --}}
@@ -32,6 +33,7 @@
                 x-data="{
                     open: false,
                     search: '',
+                    activeIndex: -1,
                     selectedProductId: null,
                     locale: document.documentElement.lang ?? 'en',
                     products: {{ Js::from($categories) }},
@@ -43,18 +45,32 @@
                     get filteredCategories() {
                         return this.products.map(c => ({
                             ...c,
-                            products: c.products.filter(p =>
-                                !this.search || this.getName(p.name).toLowerCase().includes(this.search.toLowerCase())
-                            )
+                            products: c.products
+                                .filter(p => !this.search || this.getName(p.name).toLowerCase().includes(this.search.toLowerCase()))
+                                .sort((a, b) => this.getName(a.name).localeCompare(this.getName(b.name)))
                         })).filter(c => c.products.length > 0);
+                    },
+                    get flatProducts() {
+                        return this.filteredCategories.flatMap(c => c.products);
                     },
                     selectProduct(product) {
                         this.selectedProductId = product.id;
                         this.search = this.getName(product.name);
                         this.open = false;
+                        this.activeIndex = -1;
                         $wire.set('selectedProductId', product.id);
+                    },
+                    init() {
+                        window.addEventListener('keydown', e => {
+                            if (e.key === '/' && !e.ctrlKey && !e.metaKey && !['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) {
+                                e.preventDefault();
+                                this.$refs.search.focus();
+                                this.open = true;
+                            }
+                        });
                     }
                 }"
+                @product-added-to-basket.window="search = ''; selectedProductId = null; open = false; activeIndex = -1"
                 class="relative"
             >
                 <div class="relative">
@@ -65,11 +81,16 @@
                     </svg>
                     <input
                         type="text"
+                        x-ref="search"
                         x-model="search"
                         @focus="open = true"
-                        @click.outside="open = false"
-                        @input="open = true"
-                        placeholder="{{ __('Search products…') }}"
+                        @click.outside="open = false; activeIndex = -1"
+                        @input="open = true; activeIndex = -1"
+                        @keydown.down.prevent="open = true; activeIndex = Math.min(activeIndex + 1, flatProducts.length - 1)"
+                        @keydown.up.prevent="activeIndex = activeIndex > 0 ? activeIndex - 1 : activeIndex"
+                        @keydown.enter.prevent="if (activeIndex >= 0 && flatProducts[activeIndex]) selectProduct(flatProducts[activeIndex])"
+                        @keydown.escape="open = false; activeIndex = -1"
+                        placeholder="{{ __('Search products… (/)') }}"
                         class="w-full pl-8 text-sm rounded-lg border-neutral-300 dark:border-white/[0.1]
                                bg-neutral-50 dark:bg-white/[0.04] text-neutral-800 dark:text-neutral-100
                                placeholder-neutral-400 dark:placeholder-neutral-500
@@ -93,8 +114,10 @@
                             </div>
                             <template x-for="product in category.products" :key="product.id">
                                 <div @click="selectProduct(product)"
-                                     class="px-3 py-2 text-sm cursor-pointer flex items-center justify-between
-                                            hover:bg-neutral-100 dark:hover:bg-white/[0.06] transition">
+                                     :class="activeIndex >= 0 && flatProducts[activeIndex]?.id === product.id
+                                         ? 'bg-primary-50 dark:bg-primary-900/30'
+                                         : 'hover:bg-neutral-100 dark:hover:bg-white/[0.06]'"
+                                     class="px-3 py-2 text-sm cursor-pointer flex items-center justify-between transition">
                                     <span x-text="getName(product.name)"
                                           class="text-neutral-800 dark:text-neutral-200"></span>
                                     <template x-if="product.unit">
@@ -186,31 +209,69 @@
                     {{ __('Press "Compute" to show results on the map') }}
                 </div>
             @endif
+
+            @if ($resultsStale)
+                <div class="rounded-lg border border-warning-300 dark:border-warning-500/40
+                            bg-warning-50 dark:bg-warning-900/20 px-3 py-2.5 text-[11px]
+                            text-warning-700 dark:text-warning-300 flex items-start gap-2 mt-2">
+                    <svg class="h-3.5 w-3.5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    </svg>
+                    {{ __('Basket has changed, press "Compute prices" to update.') }}
+                </div>
+            @endif
         </div>
 
         {{-- Compute button --}}
         <div class="p-4 border-t border-neutral-200 dark:border-white/[0.06]">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ __('Period') }}</span>
+                <select
+                    wire:model.live="days"
+                    class="text-xs rounded-lg border border-neutral-300 dark:border-white/[0.12]
+                           bg-neutral-50 dark:bg-[#222638] text-neutral-900 dark:text-neutral-100
+                           focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 transition
+                           py-1 pl-2 pr-6"
+                >
+                    <option value="30">{{ __('Last 30 days') }}</option>
+                    <option value="90">{{ __('Last 3 months') }}</option>
+                    <option value="180">{{ __('Last 6 months') }}</option>
+                    <option value="365">{{ __('Last year') }}</option>
+                    <option value="0">{{ __('All time') }}</option>
+                </select>
+            </div>
+            <label class="flex items-center gap-2 mb-3 cursor-pointer select-none">
+                <input
+                    type="checkbox"
+                    wire:model.live="recomputeOnChange"
+                    class="rounded text-primary-600 border-neutral-300 dark:border-white/[0.1]
+                           bg-neutral-50 dark:bg-white/[0.04] focus:ring-primary-500/30"
+                />
+                <span class="text-xs text-neutral-600 dark:text-neutral-400">
+                    {{ __('Recompute on basket change') }}
+                </span>
+            </label>
             <button
                 wire:click="compute"
                 wire:loading.attr="disabled"
                 wire:loading.class="opacity-50 cursor-not-allowed"
                 class="w-full py-2.5 bg-primary-600 hover:bg-primary-700 active:bg-primary-800
                        text-white text-sm font-semibold rounded-lg transition
+                       flex items-center justify-center gap-2
                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500
                        disabled:opacity-50 disabled:cursor-not-allowed"
             >
+                <svg wire:loading class="animate-spin h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
                 <span wire:loading.remove>{{ __('Compute prices') }}</span>
-                <span wire:loading class="flex items-center justify-center gap-2">
-                    <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                    </svg>
-                    {{ __('Computing…') }}
-                </span>
+                <span wire:loading>{{ __('Computing…') }}</span>
             </button>
 
             @if ($error)
-                <p class="text-[11px] mt-2 text-center text-error-500 dark:text-error-400">{{ $error }}</p>
+                <p class="text-[16px] mt-2 text-center text-error-500 dark:text-error-400">{{ $error }}</p>
             @endif
         </div>
         </div>{{-- /inner w-72 wrapper --}}
@@ -265,13 +326,12 @@
         {{-- Sidebar toggle --}}
         <button
             @click="sidebarOpen = !sidebarOpen; setTimeout(() => window.dispatchEvent(new CustomEvent('sidebar-toggled')), 310)"
-            :title="sidebarOpen ? '{{ __('Hide sidebar') }}' : '{{ __('Show sidebar') }}'"
+            :title="sidebarOpen ? '{{ __('Hide sidebar') }} ([)' : '{{ __('Show sidebar') }} ([)'"
             :class="sidebarOpen
-                ? 'bg-white dark:bg-[#1a1e2d] border-neutral-200 dark:border-white/[0.1]'
-                : 'bg-primary-50 dark:bg-primary-900/30 border-primary-400 dark:border-primary-500/60'"
+                ? 'bg-white dark:bg-[#1a1e2d] border-neutral-200 dark:border-white/[0.1] text-neutral-700 dark:text-neutral-200 hover:border-neutral-300 dark:hover:border-white/[0.18]'
+                : 'bg-primary-600 border-primary-600 text-white hover:bg-primary-700'"
             class="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl
-                   border shadow-card text-neutral-700 dark:text-neutral-200
-                   hover:border-neutral-300 dark:hover:border-white/[0.18] transition"
+                   border shadow-card transition"
         >
             <svg class="h-3.5 w-3.5 transition-transform duration-300"
                  :class="sidebarOpen ? '' : 'rotate-180'"
@@ -283,7 +343,7 @@
 
         {{-- Display widget --}}
         <div
-            x-data="{ open: false, opacity: 0.85, stroke: 2 }"
+            x-data="{ open: false, opacity: 0.85, stroke: 2, scale: 10 }"
             class="relative"
         >
             {{-- Expandable panel (opens upward) --}}
@@ -313,7 +373,7 @@
                                   x-text="Math.round(opacity * 100) + '%'"></span>
                         </div>
                         <input type="range" x-model="opacity" min="0.2" max="1" step="0.05"
-                               @input="$dispatch('marker-style-changed', { opacity: parseFloat(opacity), stroke: parseFloat(stroke) })"
+                               @input="$dispatch('marker-style-changed', { opacity: parseFloat(opacity), stroke: parseFloat(stroke), scale: parseFloat(scale) })"
                                class="w-full h-1.5 accent-primary-500 cursor-pointer"/>
                     </div>
                     <div>
@@ -323,7 +383,17 @@
                                   x-text="stroke + 'px'"></span>
                         </div>
                         <input type="range" x-model="stroke" min="0" max="6" step="0.5"
-                               @input="$dispatch('marker-style-changed', { opacity: parseFloat(opacity), stroke: parseFloat(stroke) })"
+                               @input="$dispatch('marker-style-changed', { opacity: parseFloat(opacity), stroke: parseFloat(stroke), scale: parseFloat(scale) })"
+                               class="w-full h-1.5 accent-primary-500 cursor-pointer"/>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between text-xs text-neutral-700 dark:text-neutral-300 mb-1.5">
+                            <label>{{ __('Scale') }}</label>
+                            <span class="tabular-nums font-mono text-neutral-900 dark:text-neutral-100"
+                                  x-text="scale + 'px'"></span>
+                        </div>
+                        <input type="range" x-model="scale" min="3" max="30" step="1"
+                               @input="$dispatch('marker-style-changed', { opacity: parseFloat(opacity), stroke: parseFloat(stroke), scale: parseFloat(scale) })"
                                class="w-full h-1.5 accent-primary-500 cursor-pointer"/>
                     </div>
                 </div>
@@ -407,7 +477,7 @@
 
     let markers      = [];
     let currentResults  = [];
-    let currentStyle    = { opacity: 0.85, stroke: 2 };
+    let currentStyle    = { opacity: 0.85, stroke: 2, scale: 10 };
     let currentColorMin = '#22c55e';
     let currentColorMax = '#ef4444';
 
@@ -433,17 +503,30 @@
         results.forEach(r => {
             const color = priceColor(r.total, min, max, hexMin, hexMax);
             const marker = L.circleMarker([r.lat, r.lng], {
-                radius:      10,
+                radius:      style.scale ?? 10,
                 fillColor:   color,
                 color:       color,
                 weight:      style.stroke,
                 fillOpacity: style.opacity,
                 opacity:     1,
             }).addTo(map);
+            const rows = (r.breakdown || []).map(b => {
+                const qty = b.unit ? `${b.qty} ${b.unit}` : `${b.qty}`;
+                return `<tr>` +
+                    `<td style="padding:2px 10px 2px 0;white-space:nowrap">${b.name} ×${qty}</td>` +
+                    `<td style="padding:2px 0;text-align:right;white-space:nowrap">${r.symbol}${b.subtotal.toFixed(2)}</td>` +
+                    `</tr>`;
+            }).join('');
             marker.bindPopup(
-                `<strong>${r.city_name}</strong>, ${r.country}<br>` +
-                `${r.symbol}${r.total.toFixed(2)}` +
-                (r.complete ? '' : ' <em>({{ __('partial') }})</em>')
+                `<strong>${r.city_name}</strong>, ${r.country}` +
+                (rows
+                    ? `<table style="border-collapse:collapse;margin-top:6px;font-size:12px">${rows}` +
+                      `<tr><td colspan="2" style="border-top:1px solid #ddd;padding-top:3px"></td></tr>` +
+                      `<tr style="font-weight:600">` +
+                      `<td style="padding:2px 10px 2px 0">Total</td>` +
+                      `<td style="padding:2px 0;text-align:right">${r.symbol}${r.total.toFixed(2)}</td>` +
+                      `</tr></table>`
+                    : `<br><strong>${r.symbol}${r.total.toFixed(2)}</strong>`)
             );
             markers.push(marker);
         });

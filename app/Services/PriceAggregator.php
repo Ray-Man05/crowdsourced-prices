@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\Currency;
+use App\Models\ExchangeRate;
 use App\Models\PriceEstimate;
 use App\Models\Product;
 use Illuminate\Support\Carbon;
@@ -33,7 +34,7 @@ class PriceAggregator
      * Minimum number of values in a city group before outlier bounds
      * can be computed reliably. Groups below this threshold are left unfiltered.
      */
-    public const MIN_SAMPLE = 4;
+    public const MIN_SAMPLE = 8;
 
     // -------------------------------------------------------------------------
     // Scope constants — used by dailySeries and submissionsPerDay
@@ -268,24 +269,193 @@ class PriceAggregator
         Currency   $currency,
         int        $days = 30,
     ): array {
+        if ($products->isEmpty()) return [];
+
+        $sortedIds = $products->pluck('id')->sort()->values();
+
+        // Composite version key: one Cache::many() call for all product versions.
+        $versionMap  = Cache::many($sortedIds->map(fn($id) => "agg_v:{$id}")->all());
+        $versionHash = md5(implode(',', array_values($versionMap)));
+        $cacheKey    = "agg:bulkCity:{$city->id}:{$currency->id}:{$days}:{$versionHash}";
+
+        return Cache::remember($cacheKey, 3600, function () use ($sortedIds, $city, $currency, $days) {
+            // Load all estimates globally (minimal columns) for city→country→global bounds fallback.
+            $allEstimates = PriceEstimate::whereIn('product_id', $sortedIds->all())
+                ->select('id', 'price', 'currency_id', 'city_id', 'product_id', 'recorded_at')
+                ->get();
+
+            // Pre-load exchange rates in one query — no per-estimate convert() calls.
+            $uniqueCurrencyIds = $allEstimates->pluck('currency_id')->unique()->all();
+            $rateMap           = ExchangeRate::whereIn('from_currency_id', $uniqueCurrencyIds)
+                ->where('to_currency_id', $currency->id)
+                ->pluck('rate', 'from_currency_id')
+                ->put($currency->id, 1.0)
+                ->all();
+
+            $convertedById = $allEstimates->mapWithKeys(fn($e) => [
+                $e->id => isset($rateMap[$e->currency_id])
+                    ? (float) $e->price * $rateMap[$e->currency_id]
+                    : null,
+            ]);
+
+            // Preload city→country mapping (one lightweight query).
+            $cityCountryMap = City::whereIn('id', $allEstimates->pluck('city_id')->unique()->all())
+                ->pluck('country_id', 'id')
+                ->all();
+
+            $cutoff1x  = $days > 0 ? Carbon::now()->subDays($days) : null;
+            $cutoff3x  = $days > 0 ? Carbon::now()->subDays($days * 3) : null;
+            $byProduct = $allEstimates->groupBy('product_id');
+            $result    = [];
+
+            foreach ($sortedIds as $productId) {
+                $allGroup  = $byProduct->get($productId, collect());
+                $cityGroup = $allGroup->where('city_id', $city->id);
+
+                if ($cityGroup->isEmpty()) {
+                    $result[$productId] = ['average' => null, 'average3x' => null, 'has_city_data' => false];
+                    continue;
+                }
+
+                // City bounds
+                $cityPrices = $cityGroup->map(fn($e) => $convertedById[$e->id])->filter()->values();
+                $cityBounds = $this->computeBounds($cityPrices);
+
+                // Country bounds (fallback) — group all estimates by country via the preloaded map
+                $countryId     = $city->country_id;
+                $countryBounds = null;
+                if ($cityBounds === null) {
+                    $countryPrices = $allGroup
+                        ->filter(fn($e) => ($cityCountryMap[$e->city_id] ?? null) === $countryId)
+                        ->map(fn($e) => $convertedById[$e->id])
+                        ->filter()
+                        ->values();
+                    $countryBounds = $this->computeBounds($countryPrices);
+                }
+
+                // Global bounds (last resort)
+                $globalBounds = null;
+                if ($cityBounds === null && $countryBounds === null) {
+                    $globalPrices = $allGroup->map(fn($e) => $convertedById[$e->id])->filter()->values();
+                    $globalBounds = $this->computeBounds($globalPrices);
+                }
+
+                $b = $cityBounds ?? $countryBounds ?? $globalBounds;
+
+                $tagged = $cityGroup->each(function ($e) use ($convertedById, $b) {
+                    $e->converted_price = $convertedById[$e->id] ?? null;
+                    $e->is_outlier      = $e->converted_price === null
+                        || ($b !== null && !$this->withinBounds($e->converted_price, $b));
+                });
+
+                $tagged3x = $cutoff3x
+                    ? $tagged->filter(fn($e) => $e->recorded_at >= $cutoff3x)
+                    : $tagged;
+
+                $tagged1x = $cutoff1x
+                    ? $tagged3x->filter(fn($e) => $e->recorded_at >= $cutoff1x)
+                    : $tagged3x;
+
+                $result[$productId] = [
+                    'average'       => $this->averageOfClean($tagged1x),
+                    'average3x'     => $this->averageOfClean($tagged3x),
+                    'has_city_data' => true,
+                ];
+            }
+
+            return $result;
+        });
+    }
+
+    /**
+     * Status and formatted estimate for each user's most recent in-window estimate per product.
+     * Returned only for products where an estimate exists within the cooldown window.
+     *
+     * Each value is an array:
+     *   'status'             => 'active_cooldown' | 'active_outlier' | 'deleted_cooldown'
+     *   'formattedEstimate'  => string|null  — the estimate's price in its submission currency
+     *
+     * @param  Collection<Product>  $products
+     * @return array<int, array{status: string, formattedEstimate: ?string}>  Keyed by product_id.
+     */
+    public function bulkUserStatuses(
+        Collection $products,
+        Currency   $currency,
+        int        $userId,
+    ): array {
+        if ($products->isEmpty()) return [];
+
+        $cutoff = Carbon::now()->subDays(PriceEstimate::ESTIMATE_COOLDOWN_DAYS);
+
+        $userEstimates = PriceEstimate::withTrashed()
+            ->where('user_id', $userId)
+            ->whereIn('product_id', $products->pluck('id')->all())
+            ->where('recorded_at', '>=', $cutoff)
+            ->with('currency')
+            ->get()
+            ->sortByDesc('recorded_at')
+            ->groupBy('product_id')
+            ->map(fn($g) => $g->first());
+
+        if ($userEstimates->isEmpty()) return [];
+
+        $result = $userEstimates->mapWithKeys(fn($e, $productId) => [
+            $productId => [
+                'status'            => $e->deleted_at ? 'deleted_cooldown' : 'active_cooldown',
+                'formattedEstimate' => $e->deleted_at
+                    ? null
+                    : $e->currency->symbol . number_format($e->price, 2),
+            ],
+        ])->all();
+
+        $active = $userEstimates->filter(fn($e) => !$e->deleted_at);
+        if ($active->isEmpty()) return $result;
+
+        // Delegate outlier detection to isEstimateOutlier, which uses the full
+        // city → country → global bounds fallback — same logic as the detail page.
+        foreach ($active as $productId => $userEstimate) {
+            if ($this->isEstimateOutlier($userEstimate, $currency)) {
+                $result[$productId]['status'] = 'active_outlier';
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Compute per-city averages for multiple products across all cities in two DB queries.
+     *
+     * Returns a sparse map — only cities with a non-null clean average are included.
+     * Used by the map page to replace O(products × cities) individual cityAverage() calls.
+     *
+     * Outlier detection mirrors taggedEstimates(): city bounds → country bounds → global,
+     * all derived from all-time data. The display window is applied after tagging.
+     *
+     * @param  Collection<Product>  $products
+     * @return array<int, array<int, float>>  [cityId => [productId => average]]
+     */
+    public function bulkMultiCityMetrics(
+        Collection $products,
+        Currency   $currency,
+        int        $days = 30,
+    ): array {
         if ($products->isEmpty()) {
             return [];
         }
 
-        $productIds = $products->pluck('id');
-
-        $allEstimates = PriceEstimate::whereIn('product_id', $productIds)
-            ->where('city_id', $city->id)
-            ->with('currency')
+        $allEstimates = PriceEstimate::whereIn('product_id', $products->pluck('id')->all())
+            ->with(['currency', 'city.country'])
             ->get();
+
+        if ($allEstimates->isEmpty()) {
+            return [];
+        }
 
         $convertedById = $allEstimates->mapWithKeys(
             fn($e) => [$e->id => $e->currency->convert($e->price, $currency)]
         );
 
-        $cutoff1x = $days > 0 ? Carbon::now()->subDays($days) : null;
-        $cutoff3x = $days > 0 ? Carbon::now()->subDays($days * 3) : null;
-
+        $cutoff    = $days > 0 ? Carbon::now()->subDays($days) : null;
         $byProduct = $allEstimates->groupBy('product_id');
         $result    = [];
 
@@ -293,34 +463,47 @@ class PriceAggregator
             $group = $byProduct->get($product->id, collect());
 
             if ($group->isEmpty()) {
-                $result[$product->id] = ['average' => null, 'average3x' => null];
                 continue;
             }
 
-            $allTimePrices = $group->map(fn($e) => $convertedById[$e->id])->filter()->values();
-            $bounds        = $this->computeBounds($allTimePrices);
+            $byCityId         = $group->groupBy('city_id');
+            $cityBoundsMap    = $this->boundsPerCity($byCityId, $convertedById);
+            $countryBoundsMap = $this->boundsPerCountry($byCityId, $convertedById);
+            $globalBounds     = $this->computeBounds(
+                $group->map(fn($e) => $convertedById[$e->id])->filter()->values()
+            );
 
-            $tagged = $group->each(function ($e) use ($convertedById, $bounds) {
+            $group->each(function ($e) use ($convertedById, $cityBoundsMap, $countryBoundsMap, $globalBounds) {
                 $e->converted_price = $convertedById[$e->id] ?? null;
-                $e->is_outlier      = $e->converted_price === null
-                    || ($bounds !== null && !$this->withinBounds($e->converted_price, $bounds));
+                $b = $cityBoundsMap->get($e->city_id)
+                    ?? $countryBoundsMap->get($e->city->country_id)
+                    ?? $globalBounds;
+                $e->is_outlier = $e->converted_price === null
+                    || ($b !== null && !$this->withinBounds($e->converted_price, $b));
             });
 
-            $tagged3x = $cutoff3x
-                ? $tagged->filter(fn($e) => $e->recorded_at >= $cutoff3x)
-                : $tagged;
+            $windowed = $cutoff ? $group->filter(fn($e) => $e->recorded_at >= $cutoff) : $group;
 
-            $tagged1x = $cutoff1x
-                ? $tagged3x->filter(fn($e) => $e->recorded_at >= $cutoff1x)
-                : $tagged3x;
-
-            $result[$product->id] = [
-                'average'   => $this->averageOfClean($tagged1x),
-                'average3x' => $this->averageOfClean($tagged3x),
-            ];
+            foreach ($windowed->groupBy('city_id') as $cityId => $cityGroup) {
+                $avg = $this->averageOfClean($cityGroup);
+                if ($avg !== null) {
+                    $result[$cityId][$product->id] = $avg;
+                }
+            }
         }
 
         return $result;
+    }
+
+    /**
+     * Whether a single active estimate is flagged as an outlier in its city context.
+     * Bounds are derived from all-time data for the product+city combination.
+     */
+    public function isEstimateOutlier(PriceEstimate $estimate, Currency $currency): bool
+    {
+        $tagged = $this->taggedEstimates($estimate->product, $currency, 0, cityId: $estimate->city_id);
+        $found  = $tagged->firstWhere('id', $estimate->id);
+        return $found ? (bool) $found->is_outlier : false;
     }
 
     // -------------------------------------------------------------------------
@@ -400,15 +583,31 @@ class PriceAggregator
             return $this->boundsCache[$key];
         }
 
-        $source    ??= $this->fetch($product, 0, $cityId, $countryId);
-        $converted   = $source->mapWithKeys(fn($e) => [$e->id => $e->currency->convert($e->price, $currency)]);
-        $byCityId    = $source->groupBy('city_id');
+        // The display source — filtered to the requested scope
+        $source ??= $this->fetch($product, 0, $cityId, $countryId);
+
+        // The fallback source — always the full product history across all cities
+        // so country and global fallbacks are not starved when a city filter is active
+        $fallbackSource = ($cityId !== null || $countryId !== null)
+            ? $this->fetch($product, 0)
+            : $source;
+
+        $converted         = $source->mapWithKeys(fn($e) => [$e->id => $e->currency->convert($e->price, $currency)]);
+        $fallbackConverted = ($fallbackSource === $source)
+            ? $converted
+            : $fallbackSource->mapWithKeys(fn($e) => [$e->id => $e->currency->convert($e->price, $currency)]);
+
+        // City bounds from the city-filtered source only
+        $cityByCityId = $source->groupBy('city_id');
+
+        // Country and global bounds from the full history
+        $fallbackByCityId = $fallbackSource->groupBy('city_id');
 
         return $this->boundsCache[$key] = [
             'convertedById'    => $converted,
-            'cityBoundsMap'    => $this->boundsPerCity($byCityId, $converted),
-            'countryBoundsMap' => $this->boundsPerCountry($byCityId, $converted),
-            'globalBounds'     => $this->computeBounds($converted->filter()->values()),
+            'cityBoundsMap'    => $this->boundsPerCity($cityByCityId, $converted),
+            'countryBoundsMap' => $this->boundsPerCountry($fallbackByCityId, $fallbackConverted),
+            'globalBounds'     => $this->computeBounds($fallbackConverted->filter()->values()),
         ];
     }
 
@@ -566,32 +765,42 @@ class PriceAggregator
         };
     }
 
-    private function boundsIqr(Collection $sorted): array
-    {
-        $count  = $sorted->count();
-        $q1  = $sorted[(int) floor($sorted->count() * 0.25)];
-        $q3  = $sorted[(int) floor($sorted->count() * 0.75)];
-        $iqr = $q3 - $q1;
-        $median = $count % 2 === 0
-        ? ($sorted[(int) ($count / 2) - 1] + $sorted[(int) ($count / 2)]) / 2
-        : $sorted[(int) floor($count / 2)];
+private function boundsIqr(Collection $sorted): array
+{
+    $count  = $sorted->count();
+    $q1     = $sorted[(int) floor($count * 0.25)];
+    $q3     = $sorted[(int) floor($count * 0.75)];
+    $iqr    = $q3 - $q1;
+    $mid    = (int) floor($count / 2);
+    $median = $count % 2 === 0
+        ? ($sorted[$mid - 1] + $sorted[$mid]) / 2.0
+        : (float) $sorted[$mid];
 
-        // Minimum half-width ensures the fence never collapses on tight clusters.
-        // A price that is within IQR_MIN_WIDTH_FRACTION of the median is always clean.
-        $minHalfWidth = $median * self::IQR_MIN_WIDTH_FRACTION;
+    // Minimum half-width prevents the IQR fence from collapsing on tight clusters.
+    // A price within IQR_MIN_WIDTH_FRACTION × median of the median is always clean.
+    // e.g. with a value of 4.0: any price in [median/5, median×5] is never an outlier.
+    $minHalfWidth = $median > 0 ? $median * self::IQR_MIN_WIDTH_FRACTION : 0.0;
 
-
-
-        if ($iqr == 0.0) return ['min' => -INF, 'max' => INF];
-
-        $iqrLower = $q1 - self::IQR_PARAM * $iqr;
-        $iqrUpper = $q3 + self::IQR_PARAM * $iqr;
-
+    // When all values are identical IQR=0, fall back entirely to the median ratio fence.
+    // The IQR fence would collapse to a single point, which is not useful.
+    if ($iqr == 0.0) {
         return [
-            'min' => min($iqrLower, $median - $minHalfWidth),
-            'max' => max($iqrUpper, $median + $minHalfWidth),
+            'min' => max(0.0, $median - $minHalfWidth),
+            'max' => $median + $minHalfWidth,
         ];
     }
+
+    // Standard IQR fence
+    $iqrLower = $q1 - self::IQR_PARAM * $iqr;
+    $iqrUpper = $q3 + self::IQR_PARAM * $iqr;
+
+    return [
+        // Take the wider of the two fences on each side,
+        // but never allow a negative lower bound for prices.
+        'min' => max(0.0, min($iqrLower, $median / (1 + self::IQR_MIN_WIDTH_FRACTION))),
+        'max' => max($iqrUpper, $median * (1 + self::IQR_MIN_WIDTH_FRACTION)),
+    ];
+}
 
     private function boundsSd(Collection $sorted): array
     {

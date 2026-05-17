@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 Use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -11,14 +12,22 @@ use Illuminate\Support\Facades\Cache;
 
 class PriceEstimate extends Model
 {
+    use SoftDeletes;
+
     public const ESTIMATE_COOLDOWN_DAYS = 7;
 
     protected static function booted(): void
     {
-        // Bump the cache version for the product whenever estimates change so that
-        // all aggregator cache entries for that product are effectively invalidated.
-        static::created(fn(self $e) => Cache::increment("agg_v:{$e->product_id}"));
-        static::deleted(fn(self $e) => Cache::increment("agg_v:{$e->product_id}"));
+        $bump = function (self $e): void {
+            // Cache::increment silently no-ops on non-existent keys with the database
+            // driver. Use an explicit read-modify-write so the version key is always
+            // created or updated, which invalidates bulkCityMetrics cache entries.
+            $key = "agg_v:{$e->product_id}";
+            Cache::put($key, (int) Cache::get($key, 0) + 1, now()->addDays(30));
+        };
+        static::created($bump);
+        static::updated($bump);
+        static::deleted($bump);
     }
 
     protected $fillable = ['price', 'user_id', 'product_id', 'currency_id', 'city_id', 'recorded_at'];
@@ -99,7 +108,8 @@ class PriceEstimate extends Model
      */
     public static function isOnCooldown(User $user, Product $product): bool
     {
-        return self::where('user_id', $user->id)
+        return self::withTrashed()
+            ->where('user_id', $user->id)
             ->where('product_id', $product->id)
             ->where('recorded_at', '>=', Carbon::now()->subDays(self::ESTIMATE_COOLDOWN_DAYS))
             ->exists();
@@ -111,7 +121,8 @@ class PriceEstimate extends Model
      */
     public static function cooldownEndsAt(User $user, Product $product): ?Carbon
     {
-        $latest = self::where('user_id', $user->id)
+        $latest = self::withTrashed()
+            ->where('user_id', $user->id)
             ->where('product_id', $product->id)
             ->latest('recorded_at')
             ->value('recorded_at');

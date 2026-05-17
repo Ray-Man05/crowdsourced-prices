@@ -134,13 +134,20 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                     @foreach ($products as $product)
                         @if ($city && $currency)
+                            @php
+                                $productMetrics   = $bulkMetrics[$product->id]  ?? [];
+                                $productStatus    = $userStatuses[$product->id]  ?? [];
+                            @endphp
                             <x-product-card
                                 :product="$product"
                                 :city="$city"
                                 :currency="$currency"
                                 :days="$days"
-                                :average-price="$bulkMetrics[$product->id]['average'] ?? null"
-                                :average3x-days-price="$bulkMetrics[$product->id]['average3x'] ?? null"
+                                :average-price="$productMetrics['average'] ?? null"
+                                :average3x-days-price="$productMetrics['average3x'] ?? null"
+                                :has-city-data="$productMetrics['has_city_data'] ?? false"
+                                :user-status="$productStatus['status'] ?? null"
+                                :user-estimate-formatted="$productStatus['formattedEstimate'] ?? null"
                             />
                         @endif
                     @endforeach

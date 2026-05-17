@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\PriceEstimate;
 use App\Models\Product;
+use App\Services\PriceAggregator;
 use Illuminate\Support\Carbon;
 use Livewire\Component;
 
@@ -12,6 +13,8 @@ class EstimateSubmission extends Component
     public Product $product;
     public string  $price = '';
     public string  $error = '';
+    public bool    $showModifyForm = false;
+    public string  $modifyPrice = '';
 
     public function mount(Product $product): void
     {
@@ -19,24 +22,68 @@ class EstimateSubmission extends Component
     }
 
     /**
-     * The user's most recent estimate for this product, if any.
+     * Most recent estimate (including soft-deleted) — determines cooldown state.
      */
     public function getLatestEstimateProperty(): ?PriceEstimate
     {
-        return PriceEstimate::where('product_id', $this->product->id)
+        return PriceEstimate::withTrashed()
+            ->where('product_id', $this->product->id)
             ->where('user_id', auth()->id())
             ->latest('recorded_at')
             ->first();
     }
 
     /**
-     * How many days remain on the cooldown, or null if not on cooldown.
+     * Days remaining in the cooldown window, or null when not on cooldown.
+     * Always at least 1 when a cooldown is active.
      */
     public function getDaysRemainingProperty(): ?int
     {
         $endsAt = PriceEstimate::cooldownEndsAt(auth()->user(), $this->product);
         if (!$endsAt) return null;
-        return (int) ceil(Carbon::now()->diffInHours($endsAt) / 24);
+        return max(1, (int) ceil(Carbon::now()->diffInHours($endsAt) / 24));
+    }
+
+    /**
+     * Whether the active (non-deleted) estimate is an outlier.
+     */
+    public function getIsOutlierProperty(): bool
+    {
+        $estimate = $this->latestEstimate;
+        if (!$estimate || $estimate->trashed()) return false;
+
+        return app(PriceAggregator::class)
+            ->isEstimateOutlier($estimate, auth()->user()->effectiveCurrency());
+    }
+
+    public function startModify(): void
+    {
+        $estimate = $this->latestEstimate;
+        if (!$estimate || $estimate->trashed()) return;
+
+        $this->modifyPrice    = (string) $estimate->price;
+        $this->showModifyForm = true;
+    }
+
+    public function cancelModify(): void
+    {
+        $this->showModifyForm = false;
+        $this->modifyPrice    = '';
+    }
+
+    public function saveModify(): void
+    {
+        $estimate = $this->latestEstimate;
+        if (!$estimate || $estimate->trashed() || $estimate->user_id !== auth()->id()) return;
+
+        $this->validate(['modifyPrice' => ['required', 'numeric', 'min:0.01', 'max:999999.99']]);
+
+        // Update price in place — recorded_at is intentionally preserved
+        $estimate->update(['price' => (float) $this->modifyPrice]);
+
+        $this->showModifyForm = false;
+        $this->modifyPrice    = '';
+        $this->dispatch('estimate-changed');
     }
 
     public function submit(): void
@@ -48,9 +95,7 @@ class EstimateSubmission extends Component
             return;
         }
 
-        $this->validate([
-            'price' => ['required', 'numeric', 'min:0.01', 'max:999999.99'],
-        ]);
+        $this->validate(['price' => ['required', 'numeric', 'min:0.01', 'max:999999.99']]);
 
         $user = auth()->user();
 
@@ -71,9 +116,7 @@ class EstimateSubmission extends Component
     {
         $estimate = $this->latestEstimate;
 
-        if (!$estimate || $estimate->user_id !== auth()->id()) {
-            return;
-        }
+        if (!$estimate || $estimate->trashed() || $estimate->user_id !== auth()->id()) return;
 
         $estimate->delete();
         $this->dispatch('estimate-changed');
@@ -82,9 +125,10 @@ class EstimateSubmission extends Component
     public function render()
     {
         return view('livewire.estimate-submission', [
-            'currency'      => auth()->user()->effectiveCurrency(),
+            'currency'       => auth()->user()->effectiveCurrency(),
             'latestEstimate' => $this->latestEstimate,
             'daysRemaining'  => $this->daysRemaining,
+            'isOutlier'      => $this->isOutlier,
         ]);
     }
 }

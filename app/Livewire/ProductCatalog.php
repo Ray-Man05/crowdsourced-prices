@@ -71,17 +71,24 @@ class ProductCatalog extends Component
         $currency = auth()->user()->effectiveCurrency();
         $products = $this->filteredProducts;
 
+        $aggregator  = app(PriceAggregator::class);
+
         $bulkMetrics = ($city && $currency)
-            ? app(PriceAggregator::class)->bulkCityMetrics($products, $city, $currency, $this->days)
+            ? $aggregator->bulkCityMetrics($products, $city, $currency, $this->days)
+            : [];
+
+        $userStatuses = $currency
+            ? $aggregator->bulkUserStatuses($products, $currency, auth()->id())
             : [];
 
         return view('livewire.product-catalog', [
-            'products'    => $products,
-            'bulkMetrics' => $bulkMetrics,
-            'categories'  => Category::orderBy('name')->get(),
-            'city'        => $city,
-            'currency'    => $currency,
-            'days'        => $this->days,
+            'products'               => $products,
+            'bulkMetrics'            => $bulkMetrics,
+            'userStatuses'           => $userStatuses,
+            'categories'             => Category::orderBy('name')->get(),
+            'city'                   => $city,
+            'currency'               => $currency,
+            'days'                   => $this->days,
         ])->layout('layouts.app');
     }
 }

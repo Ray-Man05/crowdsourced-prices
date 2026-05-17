@@ -16,9 +16,12 @@ class ProductCard extends Component
         public Product   $product,
         public City      $city,
         public Currency  $currency,
-        public ?float    $averagePrice        = null,
-        public ?float    $average3xDaysPrice  = null,
-        public int       $days                = 30,
+        public ?float    $averagePrice           = null,
+        public ?float    $average3xDaysPrice     = null,
+        public int       $days                   = 30,
+        public ?string   $userStatus             = null,
+        public ?string   $userEstimateFormatted  = null,
+        public bool      $hasCityData            = false,
     ) {
         $this->formattedPrice = $this->averagePrice !== null
             ? $currency->format($this->averagePrice)

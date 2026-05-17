@@ -53,52 +53,83 @@
             </div>
         </x-slot>
 
+        @php
+            $locale = app()->getLocale();
+
+            $locales = collect(config('app.available_locales'))
+                ->sortByDesc(fn ($label, $code) => $code === $locale);
+        @endphp
+
         <div class="overflow-x-auto transition-opacity duration-200" wire:loading.class="opacity-40">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-neutral-100 dark:border-white/[0.05]">
-                        @foreach ([__('Name (EN)'), __('Name (FR)'), __('Symbol'), __('Products'), __('Actions')] as $h)
+
+                        {{-- Locale columns --}}
+                        @foreach ($locales as $label)
                             <th class="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-widest
-                                       text-neutral-500 dark:text-neutral-400">{{ $h }}</th>
+                                    text-neutral-500 dark:text-neutral-400">
+                                {{ __('Name') }} ({{ $label }})
+                            </th>
+                        @endforeach
+
+                        {{-- Static columns --}}
+                        @foreach ([__('Symbol'), __('Products'), __('Actions')] as $heading)
+                            <th class="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-widest
+                                    text-neutral-500 dark:text-neutral-400">
+                                {{ $heading }}
+                            </th>
                         @endforeach
                     </tr>
                 </thead>
+
                 <tbody class="divide-y divide-neutral-50 dark:divide-white/[0.03]">
                     @forelse ($units as $unit)
                         <tr class="hover:bg-neutral-50 dark:hover:bg-white/[0.03] transition-colors group">
-                            <td class="px-6 py-3.5 font-medium text-neutral-800 dark:text-neutral-100">
-                                {{ $unit->translate('name', 'en') }}
-                            </td>
-                            <td class="px-6 py-3.5 text-neutral-500 dark:text-neutral-400">
-                                {{ $unit->translate('name', 'fr') }}
-                            </td>
+
+                            {{-- Locale values --}}
+                            @foreach ($locales as $code => $label)
+                                <td class="px-6 py-3.5
+                                        {{ $code === $locale
+                                            ? 'font-medium text-neutral-800 dark:text-neutral-100'
+                                            : 'text-neutral-500 dark:text-neutral-400' }}">
+                                    {{ $unit->translate('name', $code) }}
+                                </td>
+                            @endforeach
+
+                            {{-- Symbol --}}
                             <td class="px-6 py-3.5">
                                 <span class="font-mono text-xs px-2 py-0.5 rounded-md
-                                             bg-neutral-100 dark:bg-white/[0.06]
-                                             text-neutral-600 dark:text-neutral-300">
+                                            bg-neutral-100 dark:bg-white/[0.06]
+                                            text-neutral-600 dark:text-neutral-300">
                                     {{ $unit->symbol }}
                                 </span>
                             </td>
+
+                            {{-- Products --}}
                             <td class="px-6 py-3.5">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs
-                                             bg-neutral-100 dark:bg-white/[0.06]
-                                             text-neutral-600 dark:text-neutral-300">
+                                            bg-neutral-100 dark:bg-white/[0.06]
+                                            text-neutral-600 dark:text-neutral-300">
                                     {{ $unit->products_count }}
                                 </span>
                             </td>
+
+                            {{-- Actions --}}
                             <td class="px-6 py-3.5">
                                 <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition">
                                     <button wire:click="openEdit({{ $unit->id }})"
                                             class="text-xs font-medium text-primary-600 dark:text-primary-400
-                                                   px-2 py-1 rounded-md hover:bg-primary-50 dark:hover:bg-primary-900/20
-                                                   transition focus-visible:outline-none">
+                                                px-2 py-1 rounded-md hover:bg-primary-50 dark:hover:bg-primary-900/20
+                                                transition focus-visible:outline-none">
                                         {{ __('Edit') }}
                                     </button>
+
                                     <button wire:click="delete({{ $unit->id }})"
                                             wire:confirm="{{ __('Delete this unit?') }}"
                                             class="text-xs font-medium text-error-600 dark:text-error-400
-                                                   px-2 py-1 rounded-md hover:bg-error-50 dark:hover:bg-error-900/20
-                                                   transition focus-visible:outline-none">
+                                                px-2 py-1 rounded-md hover:bg-error-50 dark:hover:bg-error-900/20
+                                                transition focus-visible:outline-none">
                                         {{ __('Delete') }}
                                     </button>
                                 </div>
@@ -106,7 +137,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5"
+                            <td colspan="{{ $locales->count() + 3 }}"
                                 class="px-6 py-14 text-center text-sm text-neutral-400 dark:text-neutral-500">
                                 {{ __('No units found') }}
                             </td>

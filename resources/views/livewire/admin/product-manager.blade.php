@@ -1,4 +1,6 @@
 <div>
+
+
     @if ($showModal)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
              x-data @keydown.escape.window="$wire.set('showModal', false)">
@@ -195,20 +197,32 @@
                 <tbody class="divide-y divide-neutral-50 dark:divide-white/[0.03]">
                     @forelse ($products as $product)
                         <tr class="hover:bg-neutral-50 dark:hover:bg-white/[0.03] transition-colors group">
+                            @php($locale = app()->getLocale())
                             <td class="px-6 py-3.5">
-                                <p class="font-medium text-neutral-800 dark:text-neutral-100">
-                                    {{ $product->translate('name', 'en') }}
-                                </p>
-                                <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
-                                    {{ $product->translate('name', 'fr') }}
-                                </p>
+                                @if ($locale === 'fr')
+                                    <p class="font-bold text-neutral-800 dark:text-neutral-100">
+                                        {{ $product->translate('name', 'fr') }}
+                                    </p>
+
+                                    <p class="mt-0.5 text-xs text-neutral-400 dark:text-neutral-500">
+                                        {{ $product->translate('name', 'en') }}
+                                    </p>
+                                @else
+                                    <p class="font-bold text-neutral-800 dark:text-neutral-100">
+                                        {{ $product->translate('name', 'en') }}
+                                    </p>
+
+                                    <p class="mt-0.5 text-xs text-neutral-400 dark:text-neutral-500">
+                                        {{ $product->translate('name', 'fr') }}
+                                    </p>
+                                @endif
                             </td>
                             <td class="px-6 py-3.5">
                                 <div class="flex items-center gap-2">
                                     <span class="w-2.5 h-2.5 rounded-full flex-shrink-0"
                                           style="background-color: {{ $product->category->color }}"></span>
                                     <span class="text-neutral-600 dark:text-neutral-300">
-                                        {{ $product->category->translate('name', 'en') }}
+                                        {{ $product->category->translate('name', $locale) }}
                                     </span>
                                 </div>
                             </td>

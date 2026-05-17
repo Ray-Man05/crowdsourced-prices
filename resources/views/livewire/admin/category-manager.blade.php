@@ -56,58 +56,93 @@
             </div>
         </x-slot>
 
+        @php
+            $locale = app()->getLocale();
+
+            $locales = collect(config('app.available_locales'))
+                ->sortByDesc(fn ($label, $code) => $code === $locale);
+        @endphp
+
         <div class="overflow-x-auto transition-opacity duration-200" wire:loading.class="opacity-40">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-neutral-100 dark:border-white/[0.05]">
-                        @foreach ([
-                            __('Category'), __('FR'), __('Color'), __('Products'), __('Actions')
-                        ] as $heading)
+
+                        {{-- Locale columns --}}
+                        @foreach ($locales as $label)
                             <th class="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-widest
-                                       text-neutral-500 dark:text-neutral-400">{{ $heading }}</th>
+                                    text-neutral-500 dark:text-neutral-400">
+                                {{ $label }}
+                            </th>
+                        @endforeach
+
+                        {{-- Static columns --}}
+                        @foreach ([__('Color'), __('Products'), __('Actions')] as $heading)
+                            <th class="text-left px-6 py-3 text-[10px] font-bold uppercase tracking-widest
+                                    text-neutral-500 dark:text-neutral-400">
+                                {{ $heading }}
+                            </th>
                         @endforeach
                     </tr>
                 </thead>
+
                 <tbody class="divide-y divide-neutral-50 dark:divide-white/[0.03]">
                     @forelse ($categories as $category)
                         <tr class="hover:bg-neutral-50 dark:hover:bg-white/[0.03] transition-colors group">
-                            <td class="px-6 py-3.5 font-medium text-neutral-800 dark:text-neutral-100">
-                                <div class="flex items-center gap-2.5">
-                                    <span class="w-3 h-3 rounded-full flex-shrink-0 ring-2 ring-offset-1
-                                                 dark:ring-offset-[#12151f]"
-                                          style="background-color: {{ $category->color }};
-                                                 ring-color: {{ $category->color }}40"></span>
-                                    {{ $category->translate('name', 'en') }}
-                                </div>
-                            </td>
-                            <td class="px-6 py-3.5 text-neutral-500 dark:text-neutral-400">
-                                {{ $category->translate('name', 'fr') }}
-                            </td>
+
+                            {{-- Locale values --}}
+                            @foreach ($locales as $code => $label)
+                                <td class="px-6 py-3.5
+                                        {{ $code === $locale
+                                            ? 'font-medium text-neutral-800 dark:text-neutral-100'
+                                            : 'text-neutral-500 dark:text-neutral-400' }}">
+
+                                    @if ($loop->first)
+                                        <div class="flex items-center gap-2.5">
+                                            <span class="w-3 h-3 rounded-full flex-shrink-0 ring-2 ring-offset-1
+                                                        dark:ring-offset-[#12151f]"
+                                                style="background-color: {{ $category->color }};
+                                                        ring-color: {{ $category->color }}40"></span>
+
+                                            {{ $category->translate('name', $code) }}
+                                        </div>
+                                    @else
+                                        {{ $category->translate('name', $code) }}
+                                    @endif
+                                </td>
+                            @endforeach
+
+                            {{-- Color --}}
                             <td class="px-6 py-3.5 font-mono text-xs text-neutral-500 dark:text-neutral-400">
                                 {{ $category->color }}
                             </td>
+
+                            {{-- Products --}}
                             <td class="px-6 py-3.5">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs
-                                             bg-neutral-100 dark:bg-white/[0.06]
-                                             text-neutral-600 dark:text-neutral-300">
+                                            bg-neutral-100 dark:bg-white/[0.06]
+                                            text-neutral-600 dark:text-neutral-300">
                                     {{ $category->products_count }}
                                 </span>
                             </td>
+
+                            {{-- Actions --}}
                             <td class="px-6 py-3.5">
                                 <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition">
                                     <button wire:click="openEdit({{ $category->id }})"
                                             class="text-xs font-medium text-primary-600 dark:text-primary-400
-                                                   hover:text-primary-800 dark:hover:text-primary-300
-                                                   px-2 py-1 rounded-md hover:bg-primary-50 dark:hover:bg-primary-900/20
-                                                   transition focus-visible:outline-none">
+                                                hover:text-primary-800 dark:hover:text-primary-300
+                                                px-2 py-1 rounded-md hover:bg-primary-50 dark:hover:bg-primary-900/20
+                                                transition focus-visible:outline-none">
                                         {{ __('Edit') }}
                                     </button>
+
                                     <button wire:click="delete({{ $category->id }})"
                                             wire:confirm="{{ __('Delete this category?') }}"
                                             class="text-xs font-medium text-error-600 dark:text-error-400
-                                                   hover:text-error-800 dark:hover:text-error-300
-                                                   px-2 py-1 rounded-md hover:bg-error-50 dark:hover:bg-error-900/20
-                                                   transition focus-visible:outline-none">
+                                                hover:text-error-800 dark:hover:text-error-300
+                                                px-2 py-1 rounded-md hover:bg-error-50 dark:hover:bg-error-900/20
+                                                transition focus-visible:outline-none">
                                         {{ __('Delete') }}
                                     </button>
                                 </div>
@@ -115,7 +150,8 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-6 py-14 text-center text-sm text-neutral-400 dark:text-neutral-500">
+                            <td colspan="{{ $locales->count() + 3 }}"
+                                class="px-6 py-14 text-center text-sm text-neutral-400 dark:text-neutral-500">
                                 {{ __('No categories found') }}
                             </td>
                         </tr>
@@ -123,6 +159,7 @@
                 </tbody>
             </table>
         </div>
+
 
         <div class="px-6 py-4 border-t border-neutral-100 dark:border-white/[0.05]">
             {{ $categories->links() }}

@@ -10,6 +10,7 @@ use App\Livewire\MapPage;
 use App\Livewire\Admin\CategoryManager;
 use App\Livewire\Admin\UnitManager;
 use App\Livewire\Admin\ProductManager;
+use App\Livewire\Dashboard;
 
 // Public landing page
 Route::get('/', [LandingController::class, 'show'])->name('landing');
@@ -27,7 +28,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/map', MapPage::class)->name('map');
     Route::get('/products/{product}', ProductDetail::class)->name('products.show');
 
-    Route::get('/dashboard', fn() => view('dashboard'))->middleware('verified')->name('dashboard');
+    // Route::get('/dashboard', fn() => view('dashboard'))->middleware('verified')->name('dashboard');
 
     Route::get('/profile',           [ProfileController::class, 'edit'])           ->name('profile.edit');
     Route::patch('/profile',         [ProfileController::class, 'update'])         ->name('profile.update');
@@ -35,6 +36,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile',        [ProfileController::class, 'destroy'])        ->name('profile.destroy');
     
 });
+
+Route::get('/dashboard', Dashboard::class)
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/categories', CategoryManager::class)->name('categories');

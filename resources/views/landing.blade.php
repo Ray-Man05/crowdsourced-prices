@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}"
+      class="{{ ($userTheme ?? 'dark') === 'dark' ? 'dark' : '' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name') }} — Know the real cost of living</title>
+    <title>{{ config('app.name') }} — {{ __('Know the real cost of living') }}</title>
 
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet"/>
@@ -21,13 +22,29 @@
         #hero-map .leaflet-control-container { display: none; }
         #hero-map .leaflet-attribution-flag  { display: none; }
 
+        /* Light-mode overlay: white-tinted gradient so map shows softly */
         .hero-overlay {
             background:
                 linear-gradient(to right,
-                    rgba(0,0,0,0.92) 0%,
-                    rgba(0,0,0,0.65) 40%,
-                    rgba(0,0,0,0.15) 70%,
-                    rgba(0,0,0,0.35) 100%
+                    rgba(243,244,246,0.95) 00%,
+                    rgba(243,244,246,0.35) 20%,
+                    rgba(243,244,246,0.25) 50%,
+                    rgba(243,244,246,0.25) 70%
+                ),
+                linear-gradient(to bottom,
+                    transparent 50%,
+                    rgba(243,244,246,0.60) 100%
+                );
+        }
+
+        /* Dark-mode overlay: original black gradient */
+        .dark .hero-overlay {
+            background:
+                linear-gradient(to right,
+                    rgba(0,0,0,0.92) 10%,
+                    rgba(0,0,0,0.65) 20%,
+                    rgba(0,0,0,0.35) 50%,
+                    rgba(0,0,0,0.35) 70%
                 ),
                 linear-gradient(to bottom,
                     transparent 50%,
@@ -36,40 +53,42 @@
         }
     </style>
 </head>
-<body class="bg-[#0a0c12] text-white font-sans antialiased overflow-hidden h-screen">
+<body class="bg-neutral-100 dark:bg-[#0a0c12] text-neutral-900 dark:text-white font-sans antialiased overflow-hidden h-screen">
 
     {{-- ─── Fixed nav ─── --}}
     <nav class="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-6 sm:px-10 h-14
-                bg-black/40 backdrop-blur-md border-b border-white/[0.06]">
+                bg-white/95 dark:bg-black/40 backdrop-blur-md
+                border-b border-neutral-200/80 dark:border-white/[0.06] shadow-card dark:shadow-none">
         <a href="{{ route('landing') }}"
-           class="text-sm font-bold tracking-tight text-white hover:opacity-80 transition">
+           class="text-sm font-bold tracking-tight text-neutral-900 dark:text-white hover:opacity-75 transition">
             {{ config('app.name') }}
         </a>
 
         <div class="flex items-center gap-3">
+            @include('partials.preference-switches')
             @auth
-                <span class="hidden sm:block text-sm text-neutral-400">
+                <span class="hidden sm:block text-sm text-neutral-500 dark:text-neutral-400">
                     {{ auth()->user()->name }}
                 </span>
                 <a href="{{ route('catalog') }}"
                    class="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-lg
                           bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white
                           transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
-                    Open Catalog
+                    {{ __('Open Catalog') }}
                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
                     </svg>
                 </a>
             @else
                 <a href="{{ route('login') }}"
-                   class="text-sm font-medium text-neutral-300 hover:text-white transition">
-                    Log in
+                   class="text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition">
+                    {{ __('Log in') }}
                 </a>
                 <a href="{{ route('register') }}"
                    class="inline-flex items-center px-4 py-1.5 text-sm font-semibold rounded-lg
                           bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white
                           transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
-                    Get started
+                    {{ __('Get started') }}
                 </a>
             @endauth
         </div>
@@ -87,15 +106,14 @@
         {{-- Hero copy --}}
         <div class="relative z-20 h-full flex flex-col justify-center px-8 sm:px-16 lg:px-24 pb-28">
             <div class="max-w-lg">
-                <p class="text-xs font-semibold tracking-[0.18em] uppercase text-primary-400 mb-4 select-none">
-                    Crowdsourced price tracking
+                <p class="text-xs font-semibold tracking-[0.18em] uppercase text-primary-600 dark:text-primary-400 mb-4 select-none">
+                    {{ __('Crowdsourced price tracking') }}
                 </p>
-                <h1 class="text-5xl sm:text-6xl font-bold leading-[1.08] tracking-tight text-white mb-5">
-                    Know the real<br>cost of living.
+                <h1 class="text-5xl sm:text-6xl font-bold leading-[1.08] tracking-tight text-neutral-900 dark:text-white mb-5">
+                    {{ __('Know the real') }}<br>{{ __('cost of living.') }}
                 </h1>
-                <p class="text-lg text-neutral-300 leading-relaxed mb-8 max-w-sm">
-                    Community-powered price data from cities around the world.
-                    Compare, contribute, and plan smarter.
+                <p class="text-lg text-neutral-600 dark:text-neutral-300 leading-relaxed mb-8 max-w-sm">
+                    {{ __('Community-powered price data from cities around the world. Compare, contribute, and plan smarter.') }}
                 </p>
 
                 <div class="flex flex-wrap items-center gap-3">
@@ -106,18 +124,22 @@
                                   transition-all duration-150 active:scale-[0.98]
                                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500
                                   focus-visible:ring-offset-2 focus-visible:ring-offset-black">
-                            Browse Catalog
+                            {{ __('Browse Catalog') }}
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                             </svg>
                         </a>
                         <a href="{{ route('map') }}"
                            class="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded-xl
-                                  border border-white/20 text-white hover:bg-white/10 hover:border-white/30
+                                  border border-neutral-300 dark:border-white/20
+                                  text-neutral-700 dark:text-white
+                                  hover:bg-neutral-200/60 dark:hover:bg-white/10
+                                  hover:border-neutral-400 dark:hover:border-white/30
                                   transition-all duration-150 active:scale-[0.98]
-                                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40
-                                  focus-visible:ring-offset-2 focus-visible:ring-offset-black">
-                            Explore Map
+                                  focus-visible:outline-none focus-visible:ring-2
+                                  focus-visible:ring-primary-500 dark:focus-visible:ring-white/40
+                                  focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-black">
+                            {{ __('Explore Map') }}
                         </a>
                     @else
                         <a href="{{ route('register') }}"
@@ -126,18 +148,22 @@
                                   transition-all duration-150 active:scale-[0.98]
                                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500
                                   focus-visible:ring-offset-2 focus-visible:ring-offset-black">
-                            Start for free
+                            {{ __('Start for free') }}
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                             </svg>
                         </a>
                         <a href="{{ route('login') }}"
                            class="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded-xl
-                                  border border-white/20 text-white hover:bg-white/10 hover:border-white/30
+                                  border border-neutral-300 dark:border-white/20
+                                  text-neutral-700 dark:text-white
+                                  hover:bg-neutral-200/60 dark:hover:bg-white/10
+                                  hover:border-neutral-400 dark:hover:border-white/30
                                   transition-all duration-150 active:scale-[0.98]
-                                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40
-                                  focus-visible:ring-offset-2 focus-visible:ring-offset-black">
-                            Log in
+                                  focus-visible:outline-none focus-visible:ring-2
+                                  focus-visible:ring-primary-500 dark:focus-visible:ring-white/40
+                                  focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-black">
+                            {{ __('Log in') }}
                         </a>
                     @endauth
                 </div>
@@ -145,34 +171,35 @@
         </div>
 
         {{-- ─── Stat bar ─── --}}
-        <div class="absolute bottom-0 inset-x-0 z-20 border-t border-white/[0.07]
-                    bg-black/55 backdrop-blur-md">
+        <div class="absolute bottom-0 inset-x-0 z-20
+                    border-t border-neutral-200/80 dark:border-white/[0.07]
+                    bg-white/90 dark:bg-black/55 backdrop-blur-md shadow-card dark:shadow-none">
             <div class="max-w-3xl mx-auto px-8 py-5 grid grid-cols-3">
 
                 <div class="text-center">
-                    <p class="text-2xl sm:text-3xl font-bold text-white tabular-nums">
+                    <p class="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white tabular-nums">
                         {{ number_format($stats['cities']) }}
                     </p>
                     <p class="text-xs text-neutral-500 mt-0.5 tracking-widest uppercase">
-                        Cities
+                        {{ __('Cities') }}
                     </p>
                 </div>
 
-                <div class="text-center border-x border-white/[0.07]">
-                    <p class="text-2xl sm:text-3xl font-bold text-white tabular-nums">
+                <div class="text-center border-x border-neutral-200/80 dark:border-white/[0.07]">
+                    <p class="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white tabular-nums">
                         {{ number_format($stats['estimates']) }}
                     </p>
                     <p class="text-xs text-neutral-500 mt-0.5 tracking-widest uppercase">
-                        Estimates
+                        {{ __('Estimates') }}
                     </p>
                 </div>
 
                 <div class="text-center">
-                    <p class="text-2xl sm:text-3xl font-bold text-white tabular-nums">
+                    <p class="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white tabular-nums">
                         {{ number_format($stats['countries']) }}
                     </p>
                     <p class="text-xs text-neutral-500 mt-0.5 tracking-widest uppercase">
-                        Countries
+                        {{ __('Countries') }}
                     </p>
                 </div>
 
@@ -197,9 +224,23 @@
             attributionControl: false,
         }).setView([20, 10], 3);
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
-            maxZoom: 19,
-        }).addTo(map);
+        let tileLayer = null;
+
+        function applyTile(dark) {
+            if (tileLayer) map.removeLayer(tileLayer);
+            tileLayer = L.tileLayer(
+                dark
+                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                { maxZoom: 19 }
+            ).addTo(map);
+        }
+
+        applyTile(document.documentElement.classList.contains('dark'));
+
+        new MutationObserver(() => {
+            applyTile(document.documentElement.classList.contains('dark'));
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
         const cities = @json($cities);
 

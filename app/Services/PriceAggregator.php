@@ -49,6 +49,11 @@ class PriceAggregator
     // Lifetime is the current request — no invalidation needed.
     private array $boundsCache = [];
 
+    // Keyed by "productId:days:cityId:countryId". Prevents redundant DB queries when the
+    // same product+scope is requested multiple times in one request (e.g. dashboard page
+    // calls cityAverage + isEstimateOutlier for the same product).
+    private array $fetchCache = [];
+
     // -------------------------------------------------------------------------
     // Public API — single number averages
     // -------------------------------------------------------------------------
@@ -637,7 +642,9 @@ class PriceAggregator
         ?int    $cityId    = null,
         ?int    $countryId = null,
     ): Collection {
-        return PriceEstimate::where('price_estimates.product_id', $product->id)
+        $key = "{$product->id}:{$days}:{$cityId}:{$countryId}";
+
+        return $this->fetchCache[$key] ??= PriceEstimate::where('price_estimates.product_id', $product->id)
             ->when($days > 0,    fn($q) => $q->where('price_estimates.recorded_at', '>=', Carbon::now()->subDays($days)))
             ->when($cityId,      fn($q) => $q->where('price_estimates.city_id', $cityId))
             ->when($countryId,   fn($q) => $q

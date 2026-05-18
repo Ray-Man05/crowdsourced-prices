@@ -2,15 +2,17 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\HasBasket;
+use App\Models\Category;
 use App\Models\City;
 use App\Models\Product;
+use App\Models\UserBasket;
 use Livewire\Component;
-use App\Models\Category;
 
 class MapPage extends Component
 {
-    // Basket: array of [product_id => quantity]
-    public array  $basket            = [];
+    use HasBasket;
+
     public int    $selectedProductId = 0;
     public float  $selectedQuantity  = 1;
     public int    $days              = 365;
@@ -29,34 +31,25 @@ class MapPage extends Component
         'custom'     => ['min' => '#22c55e', 'max' => '#ef4444', 'label' => 'Custom'],
     ];
 
-    // Computed results pushed to the map via dispatch
     public array $results = [];
 
-    public function addToBasket(): void
+    public function mount(): void
     {
-        if (!$this->selectedProductId || $this->selectedQuantity <= 0) {
-            return;
-        }
+        $this->syncBasketFromDb();
+    }
 
-        $id = $this->selectedProductId;
+    protected function getActiveBasket(): UserBasket
+    {
+        return UserBasket::firstOrCreate([
+            'user_id' => auth()->id(),
+            'type'    => 'map',
+        ]);
+    }
 
-        if (isset($this->basket[$id])) {
-            $this->basket[$id]['quantity'] += $this->selectedQuantity;
-        } else {
-            $product = Product::with(['unit', 'category'])->find($id);
-            if (!$product) return;
+    // ── Extension hooks ────────────────────────────────────────────────────
 
-            $this->basket[$id] = [
-                'product_id'     => $id,
-                'name'           => $product->name,
-                'unit'           => $product->unit?->symbol ?? '',
-                'quantity'       => $this->selectedQuantity,
-                'category_color' => $product->category?->color ?? '#ffffff',
-            ];
-        }
-
-        $this->selectedProductId = 0;
-        $this->selectedQuantity  = 1;
+    protected function afterItemAdded(int $productId): void
+    {
         $this->dispatch('product-added-to-basket');
 
         if ($this->recomputeOnChange) {
@@ -66,23 +59,42 @@ class MapPage extends Component
         }
     }
 
-    public function removeFromBasket(int $productId): void
+    protected function afterItemRemoved(int $productId): void
     {
-        unset($this->basket[$productId]);
-
-        if (empty($this->basket)) {
-            $this->results      = [];
-            $this->resultsStale = false;
-            $this->dispatch('markers-cleared');
-            return;
-        }
-
         if ($this->recomputeOnChange) {
             $this->compute();
         } elseif (!empty($this->results)) {
             $this->resultsStale = true;
         }
     }
+
+    protected function afterBasketEmptied(): void
+    {
+        $this->results      = [];
+        $this->resultsStale = false;
+        $this->dispatch('markers-cleared');
+    }
+
+    // ── Public Livewire actions ────────────────────────────────────────────
+
+    public function addToBasket(): void
+    {
+        if (!$this->selectedProductId || $this->selectedQuantity <= 0) {
+            return;
+        }
+
+        $this->addItem($this->selectedProductId, $this->selectedQuantity);
+
+        $this->selectedProductId = 0;
+        $this->selectedQuantity  = 1;
+    }
+
+    public function removeFromBasket(int $productId): void
+    {
+        $this->removeItem($productId);
+    }
+
+    // ── Livewire lifecycle ─────────────────────────────────────────────────
 
     public function updatedDays(): void
     {
@@ -179,13 +191,6 @@ class MapPage extends Component
         );
     }
 
-    public function render()
-    {
-        return view('livewire.map-page', [
-            'categories' => Category::withSortedProducts(),
-        ])->layout('layouts.app');
-    }
-
     public function updatedColorScale(): void
     {
         if ($this->colorScale !== 'custom') {
@@ -210,4 +215,10 @@ class MapPage extends Component
         }
     }
 
+    public function render()
+    {
+        return view('livewire.map-page', [
+            'categories' => Category::withSortedProducts(),
+        ])->layout('layouts.app');
+    }
 }

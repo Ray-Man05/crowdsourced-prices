@@ -693,9 +693,18 @@
         {{-- ─── BASKETS SECTION ─── --}}
         @elseif ($activeSection === 'baskets')
 
-            @php
-                $basketColors = ['#10b981','#06b6d4','#3b82f6','#8b5cf6','#ec4899','#f97316','#f59e0b','#ef4444'];
-            @endphp
+            @php $basketColors = ['#10b981','#06b6d4','#3b82f6','#8b5cf6','#ec4899','#f97316','#f59e0b','#ef4444']; @endphp
+
+            {{-- Keyboard shortcut handler — scoped to this section via conditional render --}}
+            <div x-data="{}"
+                 @keydown.window="
+                     const t = $event.target.tagName;
+                     if (['INPUT','TEXTAREA','SELECT'].includes(t) || $event.ctrlKey || $event.metaKey) return;
+                     if ($event.key === 'n') { $event.preventDefault(); $wire.call('openCreateBasket'); }
+                     if ($event.key === '/') { $event.preventDefault(); window.dispatchEvent(new CustomEvent('basket-focus-search')); }
+                 "
+                 class="hidden">
+            </div>
 
             {{-- Section header --}}
             <div class="relative rounded-2xl overflow-hidden shadow-card
@@ -704,8 +713,7 @@
                             bg-white dark:bg-[#12151f]"></div>
                 <div class="relative px-5 py-4 flex items-center justify-between gap-4">
                     <div>
-                        <h2 class="text-base font-semibold tracking-tight
-                                   text-neutral-900 dark:text-white">
+                        <h2 class="text-base font-semibold tracking-tight text-neutral-900 dark:text-white">
                             {{ __('My Baskets') }}
                         </h2>
                         <p class="text-xs mt-0.5 text-neutral-500 dark:text-neutral-400">
@@ -713,16 +721,22 @@
                         </p>
                     </div>
                     @if (!$showBasketForm)
-                        <button wire:click="openCreateBasket"
-                                class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm
-                                       font-semibold transition-all
-                                       bg-primary-500 hover:bg-primary-600 text-white shadow-sm">
-                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                      d="M12 4v16m8-8H4"/>
-                            </svg>
-                            {{ __('New basket') }}
-                        </button>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <kbd class="hidden sm:inline-flex h-5 items-center px-1.5 rounded text-[10px] font-mono
+                                        border border-neutral-200 dark:border-white/[0.1]
+                                        text-neutral-400 dark:text-neutral-500
+                                        bg-neutral-50 dark:bg-white/[0.03]">N</kbd>
+                            <button wire:click="openCreateBasket"
+                                    class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm
+                                           font-semibold transition-all
+                                           bg-primary-500 hover:bg-primary-600 text-white shadow-sm">
+                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                          d="M12 4v16m8-8H4"/>
+                                </svg>
+                                {{ __('New basket') }}
+                            </button>
+                        </div>
                     @endif
                 </div>
             </div>
@@ -746,7 +760,6 @@
                                 transition-colors duration-300 bg-white dark:bg-[#12151f]"></div>
                     <div class="relative">
 
-                        {{-- Panel header --}}
                         <div class="px-5 py-4 border-b border-black/[0.06] dark:border-white/[0.06]
                                     flex flex-wrap items-center justify-between gap-3">
                             <div class="flex items-center gap-2 min-w-0">
@@ -759,11 +772,8 @@
                                     · {{ $user->city->name }}
                                 </span>
                             </div>
-
                             <div class="flex items-center gap-2 shrink-0">
-                                {{-- Period tabs --}}
-                                <div class="flex p-0.5 gap-0.5 rounded-lg
-                                            bg-neutral-100 dark:bg-white/[0.06]">
+                                <div class="flex p-0.5 gap-0.5 rounded-lg bg-neutral-100 dark:bg-white/[0.06]">
                                     @foreach ($periods as $p)
                                         <button wire:click="setPricePeriod('{{ $p['value'] }}')"
                                                 class="px-2.5 py-1 rounded-md text-xs font-medium transition-all
@@ -774,7 +784,6 @@
                                         </button>
                                     @endforeach
                                 </div>
-
                                 <button wire:click="selectBasketForPricing({{ $selectedBasketId }})"
                                         class="p-1.5 rounded-lg transition
                                                text-neutral-400 dark:text-neutral-500
@@ -789,22 +798,18 @@
                             </div>
                         </div>
 
-                        {{-- Loading skeleton --}}
                         <div wire:loading wire:target="setPricePeriod,selectBasketForPricing"
                              class="px-5 py-6 space-y-3">
-                            <div class="h-8 w-32 rounded-lg animate-pulse
-                                        bg-neutral-200 dark:bg-white/[0.08]"></div>
+                            <div class="h-8 w-32 rounded-lg animate-pulse bg-neutral-200 dark:bg-white/[0.08]"></div>
                             @foreach ([100, 75, 90, 60] as $w)
                                 <div class="flex justify-between items-center">
                                     <div class="h-3 rounded-full animate-pulse bg-neutral-200 dark:bg-white/[0.08]"
                                          style="width: {{ $w * 0.5 }}%"></div>
-                                    <div class="h-3 w-16 rounded-full animate-pulse
-                                                bg-neutral-200 dark:bg-white/[0.08]"></div>
+                                    <div class="h-3 w-16 rounded-full animate-pulse bg-neutral-200 dark:bg-white/[0.08]"></div>
                                 </div>
                             @endforeach
                         </div>
 
-                        {{-- Content --}}
                         <div wire:loading.remove wire:target="setPricePeriod,selectBasketForPricing">
                             @if ($basketPrice === null)
                                 <div class="px-5 py-10 text-center">
@@ -813,7 +818,6 @@
                                     </p>
                                 </div>
                             @else
-                                {{-- Total --}}
                                 <div class="px-5 py-5 border-b border-black/[0.06] dark:border-white/[0.06]
                                             flex items-baseline justify-between gap-4">
                                     <div>
@@ -840,7 +844,6 @@
                                     </div>
                                 </div>
 
-                                {{-- Breakdown --}}
                                 @if (!empty($basketPrice['breakdown']))
                                     <ul class="divide-y divide-black/[0.04] dark:divide-white/[0.04]">
                                         @foreach ($basketPrice['breakdown'] as $row)
@@ -852,9 +855,7 @@
                                                 </span>
                                                 <span class="text-xs text-neutral-400 dark:text-neutral-500 shrink-0 tabular-nums">
                                                     ×&thinsp;{{ rtrim(rtrim(number_format($row['quantity'], 2), '0'), '.') }}
-                                                    @if ($row['unit'])
-                                                        {{ $row['unit'] }}
-                                                    @endif
+                                                    @if ($row['unit']){{ $row['unit'] }}@endif
                                                     &nbsp;·&nbsp;
                                                     {{ $basketPrice['symbol'] }}{{ number_format($row['avg'], 2) }}/{{ $row['unit'] ?: __('unit') }}
                                                 </span>
@@ -867,7 +868,6 @@
                                     </ul>
                                 @endif
 
-                                {{-- Missing items --}}
                                 @if (!empty($basketPrice['missing']))
                                     <div class="px-5 py-4 border-t border-black/[0.06] dark:border-white/[0.06]
                                                 bg-warning-50/60 dark:bg-warning-900/10 rounded-b-2xl">
@@ -906,20 +906,19 @@
                 </div>
             @endif
 
-            {{-- Create / Edit form --}}
-            @if ($showBasketForm)
+            {{-- Create form (new baskets only — edits are handled inline) --}}
+            @if ($showBasketForm && !$editingBasketId)
                 <div class="relative rounded-2xl overflow-hidden shadow-card
                             border border-neutral-200/80 dark:border-white/[0.06]"
-                     style="border-top: 3px solid {{ $basketFormColor }}">
+                     style="border-top: 3px solid {{ $basketFormColor }}"
+                     x-data="{}">
                     <div class="absolute inset-0 backdrop-blur-sm transition-colors duration-300
                                 bg-white dark:bg-[#12151f]"></div>
                     <div class="relative px-5 py-5">
                         <h3 class="text-sm font-semibold text-neutral-900 dark:text-white mb-4">
-                            {{ $editingBasketId ? __('Edit basket') : __('New basket') }}
+                            {{ __('New basket') }}
                         </h3>
-
                         <div class="space-y-4">
-                            {{-- Name --}}
                             <div>
                                 <label class="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1.5">
                                     {{ __('Name') }}
@@ -928,6 +927,9 @@
                                        type="text"
                                        maxlength="80"
                                        placeholder="{{ __('e.g. Weekly groceries') }}"
+                                       x-init="$el.focus()"
+                                       @keydown.enter.prevent="$wire.call('saveBasket')"
+                                       @keydown.escape.prevent="$wire.call('cancelBasketForm')"
                                        class="w-full text-sm rounded-lg transition
                                               border-neutral-300 dark:border-white/[0.1]
                                               bg-neutral-50 dark:bg-white/[0.05]
@@ -939,8 +941,6 @@
                                     <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
                                 @enderror
                             </div>
-
-                            {{-- Color --}}
                             <div>
                                 <label class="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">
                                     {{ __('Color') }}
@@ -953,18 +953,17 @@
                                                        {{ $basketFormColor === $color
                                                            ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-[#12151f] scale-110'
                                                            : 'opacity-70 hover:opacity-100 hover:scale-105' }}"
-                                                style="background-color: {{ $color }}; ring-color: {{ $color }}">
+                                                style="background-color: {{ $color }}">
                                         </button>
                                     @endforeach
                                 </div>
                             </div>
                         </div>
-
                         <div class="flex items-center gap-2 mt-5">
                             <button wire:click="saveBasket"
                                     class="px-4 py-2 rounded-xl text-sm font-semibold transition-all
                                            bg-primary-500 hover:bg-primary-600 text-white shadow-sm">
-                                {{ $editingBasketId ? __('Save changes') : __('Create basket') }}
+                                {{ __('Create basket') }}
                             </button>
                             <button wire:click="cancelBasketForm"
                                     class="px-4 py-2 rounded-xl text-sm font-medium transition-all
@@ -973,6 +972,11 @@
                                            hover:bg-neutral-100 dark:hover:bg-white/[0.06]">
                                 {{ __('Cancel') }}
                             </button>
+                            <kbd class="ml-auto hidden sm:inline-flex items-center px-1.5 py-0.5 rounded
+                                        text-[10px] font-mono border border-neutral-200 dark:border-white/[0.1]
+                                        text-neutral-400 dark:text-neutral-500 bg-neutral-50 dark:bg-white/[0.03]">
+                                Esc
+                            </kbd>
                         </div>
                     </div>
                 </div>
@@ -1025,94 +1029,173 @@
                             ->sortByDesc('count');
                     @endphp
 
-                    {{-- No overflow-hidden on the outer card so the dropdown can escape it --}}
-                    <div class="relative rounded-2xl shadow-card
+                    <div wire:key="basket-{{ $basket->id }}"
+                         class="relative rounded-2xl shadow-card
                                 border border-neutral-200/80 dark:border-white/[0.06]"
-                         style="border-top: 3px solid {{ $basket->color }}">
+                         style="border-top: 3px solid {{ $basket->color }}"
+                         x-data="{
+                             editing: false,
+                             editName: {{ Js::from($basket->name) }},
+                             editColor: {{ Js::from($basket->color) }},
+                             savedName: {{ Js::from($basket->name) }},
+                             savedColor: {{ Js::from($basket->color) }},
+                             colors: {{ Js::from($basketColors) }},
+                             init() {
+                                 this.$watch('editing', v => {
+                                     if (v) this.$nextTick(() => this.$refs.editNameInput?.focus());
+                                 });
+                             },
+                             async save() {
+                                 const name = this.editName.trim();
+                                 if (!name) return;
+                                 await $wire.call('updateBasket', {{ $basket->id }}, name, this.editColor);
+                                 this.savedName = name;
+                                 this.savedColor = this.editColor;
+                                 this.editing = false;
+                             },
+                             cancel() {
+                                 this.editName = this.savedName;
+                                 this.editColor = this.savedColor;
+                                 this.editing = false;
+                             }
+                         }"
+                         @keydown.escape.window="if (editing) { $event.preventDefault(); cancel(); }">
+
                         <div class="absolute inset-0 rounded-2xl overflow-hidden backdrop-blur-sm
                                     transition-colors duration-300 bg-white dark:bg-[#12151f]"></div>
                         <div class="relative">
 
                             {{-- Basket header --}}
-                            <div class="px-5 py-4 flex items-center gap-3">
-                                <div class="w-3 h-3 rounded-full shrink-0"
-                                     style="background-color: {{ $basket->color }}"></div>
+                            <div class="px-5 py-3.5">
 
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-semibold text-neutral-900 dark:text-white truncate">
-                                        {{ $basket->name }}
-                                    </p>
-                                    <div class="mt-0.5">
-                                        @if ($itemCount === 0)
-                                            <p class="text-xs text-neutral-400 dark:text-neutral-500">
-                                                {{ __('Empty') }}
-                                            </p>
-                                        @else
-                                            <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                                                <span class="text-xs text-neutral-400 dark:text-neutral-500">
-                                                    {{ $itemCount }} {{ $itemCount === 1 ? __('item') : __('items') }}
-                                                </span>
-                                                @foreach ($catGroups as $cat)
-                                                    <span class="inline-flex items-center gap-1
-                                                                 text-[11px] text-neutral-400 dark:text-neutral-500">
-                                                        <span class="w-1.5 h-1.5 rounded-full shrink-0"
-                                                              style="background-color: {{ $cat['color'] }}"></span>
-                                                        {{ $cat['name'] }}@if ($cat['count'] > 1) ×{{ $cat['count'] }}@endif
+                                {{-- View mode --}}
+                                <div x-show="!editing" class="flex items-center gap-3">
+                                    <div class="w-3 h-3 rounded-full shrink-0"
+                                         style="background-color: {{ $basket->color }}"></div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-semibold text-neutral-900 dark:text-white truncate">
+                                            {{ $basket->name }}
+                                        </p>
+                                        <div class="mt-0.5">
+                                            @if ($itemCount === 0)
+                                                <p class="text-xs text-neutral-400 dark:text-neutral-500">{{ __('Empty') }}</p>
+                                            @else
+                                                <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                                    <span class="text-xs text-neutral-400 dark:text-neutral-500">
+                                                        {{ $itemCount }} {{ $itemCount === 1 ? __('item') : __('items') }}
                                                     </span>
-                                                @endforeach
-                                            </div>
+                                                    @foreach ($catGroups as $cat)
+                                                        <span class="inline-flex items-center gap-1
+                                                                     text-[11px] text-neutral-400 dark:text-neutral-500">
+                                                            <span class="w-1.5 h-1.5 rounded-full shrink-0"
+                                                                  style="background-color: {{ $cat['color'] }}"></span>
+                                                            {{ $cat['name'] }}@if ($cat['count'] > 1) ×{{ $cat['count'] }}@endif
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-1 shrink-0">
+                                        <button @click="editing = true"
+                                                class="p-1.5 rounded-lg transition
+                                                       text-neutral-400 dark:text-neutral-500
+                                                       hover:text-neutral-700 dark:hover:text-neutral-200
+                                                       hover:bg-neutral-100 dark:hover:bg-white/[0.06]"
+                                                title="{{ __('Edit') }}">
+                                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                            </svg>
+                                        </button>
+                                        <button wire:click="deleteBasket({{ $basket->id }})"
+                                                wire:confirm="{{ __('Delete this basket and all its items?') }}"
+                                                class="p-1.5 rounded-lg transition
+                                                       text-neutral-400 dark:text-neutral-500
+                                                       hover:text-error-500 dark:hover:text-error-400
+                                                       hover:bg-error-50 dark:hover:bg-error-900/20">
+                                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                            </svg>
+                                        </button>
+                                        @if ($user->city)
+                                            <button wire:click="selectBasketForPricing({{ $basket->id }})"
+                                                    class="p-1.5 rounded-lg transition
+                                                           {{ $selectedBasketId === $basket->id
+                                                               ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20'
+                                                               : 'text-neutral-400 dark:text-neutral-500 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20' }}"
+                                                    title="{{ __('View price in your city') }}">
+                                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                                </svg>
+                                            </button>
                                         @endif
+                                        <button wire:click="toggleBasket({{ $basket->id }})"
+                                                class="p-1.5 rounded-lg transition
+                                                       text-neutral-400 dark:text-neutral-500
+                                                       hover:text-neutral-700 dark:hover:text-neutral-200
+                                                       hover:bg-neutral-100 dark:hover:bg-white/[0.06]">
+                                            <svg class="h-3.5 w-3.5 transition-transform duration-200
+                                                        {{ $isOpen ? 'rotate-180' : '' }}"
+                                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </div>
 
-                                <div class="flex items-center gap-1 shrink-0">
-                                    <button wire:click="editBasket({{ $basket->id }})"
-                                            class="p-1.5 rounded-lg transition text-xs font-medium
-                                                   text-neutral-400 dark:text-neutral-500
-                                                   hover:text-neutral-700 dark:hover:text-neutral-200
-                                                   hover:bg-neutral-100 dark:hover:bg-white/[0.06]">
-                                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                        </svg>
-                                    </button>
-                                    <button wire:click="deleteBasket({{ $basket->id }})"
-                                            wire:confirm="{{ __('Delete this basket and all its items?') }}"
-                                            class="p-1.5 rounded-lg transition
-                                                   text-neutral-400 dark:text-neutral-500
-                                                   hover:text-error-500 dark:hover:text-error-400
-                                                   hover:bg-error-50 dark:hover:bg-error-900/20">
-                                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                        </svg>
-                                    </button>
-                                    @if ($user->city)
-                                        <button wire:click="selectBasketForPricing({{ $basket->id }})"
-                                                class="p-1.5 rounded-lg transition
-                                                       {{ $selectedBasketId === $basket->id
-                                                           ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20'
-                                                           : 'text-neutral-400 dark:text-neutral-500 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20' }}"
-                                                title="{{ __('View price in your city') }}">
-                                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                {{-- Edit mode (inline — no separate form card) --}}
+                                <div x-show="editing" x-cloak class="space-y-3">
+                                    {{-- Color swatches --}}
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <template x-for="color in colors" :key="color">
+                                            <button type="button"
+                                                    @click="editColor = color; $el.closest('[style*=border-top]').style.borderTopColor = color"
+                                                    :style="'background-color:' + color"
+                                                    :class="editColor === color
+                                                        ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-[#12151f] scale-110'
+                                                        : 'opacity-60 hover:opacity-100 hover:scale-105'"
+                                                    class="w-6 h-6 rounded-full transition-all focus:outline-none shrink-0">
+                                            </button>
+                                        </template>
+                                    </div>
+                                    {{-- Name + save/cancel --}}
+                                    <div class="flex items-center gap-2">
+                                        <input type="text"
+                                               x-ref="editNameInput"
+                                               x-model="editName"
+                                               maxlength="80"
+                                               @keydown.enter.prevent="save()"
+                                               @keydown.escape.prevent="cancel()"
+                                               class="flex-1 text-sm rounded-lg transition
+                                                      border-neutral-300 dark:border-white/[0.1]
+                                                      bg-neutral-50 dark:bg-white/[0.05]
+                                                      text-neutral-800 dark:text-neutral-100
+                                                      focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500
+                                                      focus:bg-white dark:focus:bg-white/[0.08]"/>
+                                        <button @click="save()"
+                                                :disabled="!editName.trim()"
+                                                class="shrink-0 px-3 py-2 rounded-lg text-sm font-semibold transition-all
+                                                       bg-primary-500 hover:bg-primary-600 text-white
+                                                       disabled:opacity-40 disabled:cursor-not-allowed">
+                                            {{ __('Save') }}
+                                        </button>
+                                        <button @click="cancel()"
+                                                class="shrink-0 p-2 rounded-lg transition
+                                                       text-neutral-400 dark:text-neutral-500
+                                                       hover:text-neutral-700 dark:hover:text-neutral-200
+                                                       hover:bg-neutral-100 dark:hover:bg-white/[0.06]">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                                      d="M6 18L18 6M6 6l12 12"/>
                                             </svg>
                                         </button>
-                                    @endif
-                                    <button wire:click="toggleBasket({{ $basket->id }})"
-                                            class="p-1.5 rounded-lg transition
-                                                   text-neutral-400 dark:text-neutral-500
-                                                   hover:text-neutral-700 dark:hover:text-neutral-200
-                                                   hover:bg-neutral-100 dark:hover:bg-white/[0.06]">
-                                        <svg class="h-3.5 w-3.5 transition-transform duration-200
-                                                    {{ $isOpen ? 'rotate-180' : '' }}"
-                                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M19 9l-7 7-7-7"/>
-                                        </svg>
-                                    </button>
+                                    </div>
                                 </div>
+
                             </div>
 
                             {{-- Expanded content --}}
@@ -1131,14 +1214,13 @@
                                             @foreach ($basket->items as $item)
                                                 <li class="group px-5 py-3 flex items-center gap-3">
                                                     <span class="w-2 h-2 rounded-full shrink-0"
-                                                          style="background-color: {{ $item->product->category?->color ?? '#9ca3af' }}">
-                                                    </span>
+                                                          style="background-color: {{ $item->product->category?->color ?? '#9ca3af' }}"></span>
                                                     <span class="flex-1 text-sm font-medium
                                                                  text-neutral-800 dark:text-neutral-100 truncate">
                                                         {{ $item->product->name }}
                                                     </span>
-                                                    <span class="text-sm tabular-nums
-                                                                 text-neutral-500 dark:text-neutral-400 shrink-0">
+                                                    <span class="text-sm tabular-nums shrink-0
+                                                                 text-neutral-500 dark:text-neutral-400">
                                                         ×&thinsp;{{ rtrim(rtrim(number_format((float)$item->quantity, 2), '0'), '.') }}
                                                         @if ($item->product->unit)
                                                             <span class="text-xs text-neutral-400 dark:text-neutral-500">
@@ -1164,19 +1246,21 @@
                                     @endif
 
                                     {{-- Add item form --}}
-                                    <div class="px-5 py-4 border-t border-black/[0.06] dark:border-white/[0.06]
+                                    <div class="px-5 pt-4 pb-5 border-t border-black/[0.06] dark:border-white/[0.06]
                                                 bg-neutral-50/60 dark:bg-white/[0.02] rounded-b-2xl"
-                                         wire:key="basket-form-{{ $basket->id }}-{{ $basketItemFormKey }}"
+                                         wire:key="add-item-{{ $basket->id }}-{{ $basketItemFormKey }}"
                                          x-data="{
                                              open: false,
                                              search: '',
-                                             cityOnly: {{ $user->city ? 'true' : 'false' }},
                                              activeIndex: -1,
+                                             cityOnly: {{ $user->city ? 'true' : 'false' }},
+                                             qty: 1,
                                              selectedName: '',
                                              selectedUnit: '',
+                                             selectedId: null,
                                              cityProductIds: {{ Js::from($cityProductIds) }},
-                                             categories: {{ Js::from($categories) }},
                                              basketProductIds: {{ Js::from($basket->items->pluck('product_id')->all()) }},
+                                             categories: {{ Js::from($categories) }},
                                              locale: document.documentElement.lang ?? 'en',
                                              getName(obj) {
                                                  if (!obj) return '';
@@ -1201,180 +1285,189 @@
                                              selectProduct(product) {
                                                  this.selectedName = this.getName(product.name);
                                                  this.selectedUnit = product.unit ? product.unit.symbol : '';
+                                                 this.selectedId = product.id;
                                                  this.search = '';
                                                  this.open = false;
                                                  this.activeIndex = -1;
-                                                 $wire.set('newItemProductId', product.id);
                                              },
                                              clearProduct() {
                                                  this.selectedName = '';
                                                  this.selectedUnit = '';
-                                                 this.search = '';
-                                                 $wire.set('newItemProductId', 0);
+                                                 this.selectedId = null;
+                                                 this.qty = 1;
+                                             },
+                                             async addToBasket() {
+                                                 if (!this.selectedId) return;
+                                                 const qty = Math.max(0.01, parseFloat(this.qty) || 1);
+                                                 await $wire.call('addItemToBasket', {{ $basket->id }}, this.selectedId, qty);
+                                                 this.clearProduct();
                                              }
                                          }"
+                                         @basket-focus-search.window="$refs.basketSearchInput?.focus(); open = true"
                                          @click.outside="open = false; activeIndex = -1">
 
-                                        {{-- Product filter: All vs city-only --}}
+                                        {{-- Header row: label + city filter toggle --}}
                                         <div class="flex items-center justify-between mb-3">
-                                            <p class="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                                            <p class="text-xs font-semibold uppercase tracking-widest
+                                                       text-neutral-400 dark:text-neutral-500">
                                                 {{ __('Add item') }}
                                             </p>
                                             @if ($user->city)
-                                                <div class="flex p-0.5 gap-0.5 rounded-lg
+                                                <div class="flex items-center p-0.5 gap-0.5 rounded-lg
                                                             bg-neutral-100 dark:bg-white/[0.06]">
                                                     <button type="button"
-                                                            @click="cityOnly = false; open = !!search"
+                                                            @click="cityOnly = false; if (search) open = true"
                                                             class="px-2.5 py-1 rounded-md text-xs font-medium transition-all"
                                                             :class="!cityOnly
                                                                 ? 'bg-white dark:bg-white/[0.12] shadow-sm text-neutral-700 dark:text-white'
-                                                                : 'text-neutral-400 dark:text-neutral-500'">
+                                                                : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'">
                                                         {{ __('All products') }}
                                                     </button>
                                                     <button type="button"
-                                                            @click="cityOnly = true; open = !!search"
+                                                            @click="cityOnly = true; if (search) open = true"
                                                             class="px-2.5 py-1 rounded-md text-xs font-medium transition-all"
                                                             :class="cityOnly
                                                                 ? 'bg-white dark:bg-white/[0.12] shadow-sm text-neutral-700 dark:text-white'
-                                                                : 'text-neutral-400 dark:text-neutral-500'">
-                                                        {{ $user->city->name }}
+                                                                : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'"
+                                                            title="{{ __('Only products with price data in :city', ['city' => $user->city->name]) }}">
+                                                        {{ __('With local data') }}
                                                     </button>
                                                 </div>
                                             @endif
                                         </div>
 
-                                        <div class="flex gap-2 items-start">
-                                            {{-- Product selector --}}
-                                            <div class="relative flex-1">
-                                                <div class="relative">
-                                                    {{-- Selected product pill --}}
-                                                    <template x-if="selectedName">
-                                                        <div class="flex items-center gap-2 w-full pl-3 pr-2 py-2 rounded-lg text-sm
-                                                                    border border-primary-300 dark:border-primary-700/60
-                                                                    bg-primary-50 dark:bg-primary-900/20">
-                                                            <span x-text="selectedName"
-                                                                  class="flex-1 truncate font-medium
-                                                                         text-primary-700 dark:text-primary-300">
-                                                            </span>
-                                                            <template x-if="selectedUnit">
-                                                                <span class="text-xs shrink-0 text-primary-400 dark:text-primary-500"
-                                                                      x-text="'/ ' + selectedUnit"></span>
-                                                            </template>
-                                                            <button type="button"
-                                                                    @click="clearProduct()"
-                                                                    class="shrink-0 text-primary-400 hover:text-primary-600
-                                                                           dark:text-primary-500 dark:hover:text-primary-300">
-                                                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                          d="M6 18L18 6M6 6l12 12"/>
-                                                                </svg>
-                                                            </button>
-                                                        </div>
-                                                    </template>
-
-                                                    {{-- Search input --}}
-                                                    <template x-if="!selectedName">
-                                                        <div class="relative">
-                                                            <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5
-                                                                        text-neutral-400 pointer-events-none"
-                                                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                                                            </svg>
-                                                            <input
-                                                                type="text"
-                                                                x-model="search"
-                                                                @focus="open = true"
-                                                                @input="open = true; activeIndex = -1"
-                                                                @keydown.down.prevent="open = true; activeIndex = Math.min(activeIndex + 1, flatProducts.length - 1)"
-                                                                @keydown.up.prevent="activeIndex = activeIndex > 0 ? activeIndex - 1 : activeIndex"
-                                                                @keydown.enter.prevent="if (activeIndex >= 0 && flatProducts[activeIndex]) selectProduct(flatProducts[activeIndex])"
-                                                                @keydown.escape="open = false; activeIndex = -1"
-                                                                placeholder="{{ __('Search product…') }}"
-                                                                class="w-full pl-8 text-sm rounded-lg transition
-                                                                       border-neutral-300 dark:border-white/[0.1]
-                                                                       bg-neutral-50 dark:bg-white/[0.05]
-                                                                       text-neutral-800 dark:text-neutral-100
-                                                                       placeholder-neutral-400 dark:placeholder-neutral-500
-                                                                       focus:ring-2 focus:ring-primary-500/30
-                                                                       focus:border-primary-500
-                                                                       focus:bg-white dark:focus:bg-white/[0.08]"
-                                                            />
-                                                        </div>
-                                                    </template>
-                                                </div>
-
-                                                {{-- Dropdown --}}
-                                                <div x-show="open && !selectedName" x-cloak
-                                                     x-transition:enter="transition ease-out duration-100"
-                                                     x-transition:enter-start="opacity-0 scale-95"
-                                                     x-transition:enter-end="opacity-100 scale-100"
-                                                     class="absolute left-0 z-50 mt-1 w-full min-w-[220px] rounded-xl
-                                                            shadow-card-md max-h-56 overflow-y-auto
-                                                            bg-white dark:bg-neutral-900
-                                                            border border-neutral-200 dark:border-white/[0.08]">
-                                                    <template x-for="category in filteredCategories" :key="category.id">
-                                                        <div>
-                                                            <div class="px-3 pt-2.5 pb-1 text-[10px] font-bold
-                                                                        uppercase tracking-widest"
-                                                                 :style="'color: ' + (category.color ?? '#9ca3af')">
-                                                                <span x-text="getName(category.name)"></span>
-                                                            </div>
-                                                            <template x-for="product in category.products" :key="product.id">
-                                                                <div @click="selectProduct(product)"
-                                                                     :class="activeIndex >= 0 && flatProducts[activeIndex]?.id === product.id
-                                                                         ? 'bg-primary-50 dark:bg-primary-900/30'
-                                                                         : 'hover:bg-neutral-100 dark:hover:bg-white/[0.06]'"
-                                                                     class="px-3 py-2 text-sm cursor-pointer transition
-                                                                            flex items-center justify-between">
-                                                                    <span x-text="getName(product.name)"
-                                                                          class="text-neutral-800 dark:text-neutral-200"></span>
-                                                                    <div class="flex items-center gap-2 shrink-0 ml-2">
-                                                                        <template x-if="cityProductIds.includes(product.id)">
-                                                                            <span class="w-1.5 h-1.5 rounded-full bg-primary-400"
-                                                                                  title="{{ __('Data in your city') }}"></span>
-                                                                        </template>
-                                                                        <template x-if="product.unit">
-                                                                            <span class="text-xs text-neutral-400 dark:text-neutral-500"
-                                                                                  x-text="product.unit.symbol"></span>
-                                                                        </template>
-                                                                    </div>
-                                                                </div>
-                                                            </template>
-                                                        </div>
-                                                    </template>
-                                                    <div x-show="filteredCategories.length === 0"
-                                                         class="px-3 py-4 text-sm text-center
-                                                                text-neutral-400 dark:text-neutral-500">
-                                                        {{ __('No products found') }}
-                                                    </div>
-                                                </div>
+                                        {{-- Product search / selected chip --}}
+                                        <div class="relative mb-3">
+                                            <div x-show="selectedName"
+                                                 class="flex items-center gap-2 w-full pl-3 pr-2 py-2.5 rounded-lg text-sm
+                                                        border border-primary-300 dark:border-primary-700/60
+                                                        bg-primary-50 dark:bg-primary-900/20">
+                                                <span x-text="selectedName"
+                                                      class="flex-1 truncate font-medium text-primary-700 dark:text-primary-300">
+                                                </span>
+                                                <span x-show="selectedUnit" x-text="selectedUnit"
+                                                      class="text-xs shrink-0 text-primary-400 dark:text-primary-500
+                                                             pl-2 border-l border-primary-200 dark:border-primary-700/40">
+                                                </span>
+                                                <button type="button" @click="clearProduct()"
+                                                        class="shrink-0 ml-1 p-0.5 rounded text-primary-400 dark:text-primary-500
+                                                               hover:text-primary-700 dark:hover:text-primary-300 transition">
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                              d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
                                             </div>
 
-                                            {{-- Quantity input --}}
-                                            <input wire:model="newItemQuantity"
-                                                   type="number"
-                                                   min="0.01"
-                                                   step="0.01"
-                                                   class="w-20 shrink-0 text-sm text-center rounded-lg transition
-                                                          border-neutral-300 dark:border-white/[0.1]
-                                                          bg-neutral-50 dark:bg-white/[0.05]
-                                                          text-neutral-800 dark:text-neutral-100
-                                                          focus:ring-2 focus:ring-primary-500/30
-                                                          focus:border-primary-500
-                                                          focus:bg-white dark:focus:bg-white/[0.08]"/>
+                                            <div x-show="!selectedName" class="relative">
+                                                <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5
+                                                            text-neutral-400 pointer-events-none"
+                                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                                </svg>
+                                                <input type="text"
+                                                       x-ref="basketSearchInput"
+                                                       x-model="search"
+                                                       @focus="open = true"
+                                                       @input="open = true; activeIndex = -1"
+                                                       @keydown.down.prevent="open = true; activeIndex = Math.min(activeIndex + 1, flatProducts.length - 1)"
+                                                       @keydown.up.prevent="activeIndex = Math.max(0, activeIndex - 1)"
+                                                       @keydown.enter.prevent="if (activeIndex >= 0 && flatProducts[activeIndex]) selectProduct(flatProducts[activeIndex])"
+                                                       @keydown.escape.stop="open = false; activeIndex = -1"
+                                                       placeholder="{{ __('Search products… (/)') }}"
+                                                       class="w-full pl-9 py-2.5 text-sm rounded-lg transition
+                                                              border-neutral-300 dark:border-white/[0.1]
+                                                              bg-neutral-50 dark:bg-white/[0.05]
+                                                              text-neutral-800 dark:text-neutral-100
+                                                              placeholder-neutral-400 dark:placeholder-neutral-500
+                                                              focus:ring-2 focus:ring-primary-500/30
+                                                              focus:border-primary-500
+                                                              focus:bg-white dark:focus:bg-white/[0.08]"/>
+                                            </div>
 
-                                            {{-- Add button --}}
-                                            <button wire:click="addItemToBasket({{ $basket->id }})"
-                                                    :disabled="!selectedName"
-                                                    class="shrink-0 px-3 py-2 rounded-lg text-sm font-semibold transition-all
+                                            {{-- Dropdown --}}
+                                            <div x-show="open && !selectedName" x-cloak
+                                                 x-transition:enter="transition ease-out duration-100"
+                                                 x-transition:enter-start="opacity-0 scale-95"
+                                                 x-transition:enter-end="opacity-100 scale-100"
+                                                 class="absolute left-0 z-50 mt-1 w-full rounded-xl shadow-card-md
+                                                        max-h-56 overflow-y-auto
+                                                        bg-white dark:bg-neutral-900
+                                                        border border-neutral-200 dark:border-white/[0.08]">
+                                                <template x-for="category in filteredCategories" :key="category.id">
+                                                    <div>
+                                                        <div class="px-3 pt-2.5 pb-1 text-[10px] font-bold
+                                                                    uppercase tracking-widest"
+                                                             :style="'color: ' + (category.color ?? '#9ca3af')">
+                                                            <span x-text="getName(category.name)"></span>
+                                                        </div>
+                                                        <template x-for="product in category.products" :key="product.id">
+                                                            <div @click="selectProduct(product)"
+                                                                 :class="activeIndex >= 0 && flatProducts[activeIndex]?.id === product.id
+                                                                     ? 'bg-primary-50 dark:bg-primary-900/30'
+                                                                     : 'hover:bg-neutral-100 dark:hover:bg-white/[0.06]'"
+                                                                 class="px-3 py-2 text-sm cursor-pointer transition
+                                                                        flex items-center justify-between">
+                                                                <span x-text="getName(product.name)"
+                                                                      class="text-neutral-800 dark:text-neutral-200"></span>
+                                                                <div class="flex items-center gap-2 shrink-0 ml-2">
+                                                                    <template x-if="cityProductIds.includes(product.id)">
+                                                                        <span class="w-1.5 h-1.5 rounded-full bg-primary-400"
+                                                                              title="{{ __('Has price data in your city') }}"></span>
+                                                                    </template>
+                                                                    <template x-if="product.unit">
+                                                                        <span class="text-xs text-neutral-400 dark:text-neutral-500"
+                                                                              x-text="product.unit.symbol"></span>
+                                                                    </template>
+                                                                </div>
+                                                            </div>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                                <div x-show="filteredCategories.length === 0"
+                                                     class="px-3 py-4 text-sm text-center
+                                                            text-neutral-400 dark:text-neutral-500">
+                                                    {{ __('No products found') }}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {{-- Quantity slider + input + Add button --}}
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex-1 flex items-center gap-2 min-w-0">
+                                                <input type="range"
+                                                       x-model.number="qty"
+                                                       min="0.1" max="10" step="0.1"
+                                                       class="flex-1 min-w-0 h-1.5 rounded-full appearance-none cursor-pointer
+                                                              accent-primary-500"
+                                                       :disabled="!selectedId"/>
+                                                <div class="flex items-center gap-1.5 shrink-0">
+                                                    <input type="number"
+                                                           x-model.number="qty"
+                                                           min="0.01" step="0.01"
+                                                           class="w-16 text-sm text-center rounded-lg transition
+                                                                  border-neutral-300 dark:border-white/[0.1]
+                                                                  bg-neutral-50 dark:bg-white/[0.05]
+                                                                  text-neutral-800 dark:text-neutral-100
+                                                                  focus:ring-2 focus:ring-primary-500/30
+                                                                  focus:border-primary-500
+                                                                  focus:bg-white dark:focus:bg-white/[0.08]"/>
+                                                    <span x-show="selectedUnit" x-text="selectedUnit"
+                                                          class="text-xs text-neutral-400 dark:text-neutral-500 min-w-[18px]">
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <button @click="addToBasket()"
+                                                    :disabled="!selectedId"
+                                                    class="shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-all
                                                            bg-primary-500 hover:bg-primary-600 text-white
                                                            disabled:opacity-40 disabled:cursor-not-allowed">
                                                 {{ __('Add') }}
                                             </button>
                                         </div>
-                                    </div>
 
+                                    </div>
                                 </div>
                             @endif
 

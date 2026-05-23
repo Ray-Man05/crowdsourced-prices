@@ -24,8 +24,6 @@ class Dashboard extends Component
 
     // Basket item management
     public ?int   $openBasketId      = null;
-    public int    $newItemProductId  = 0;
-    public float  $newItemQuantity   = 1.0;
     public int    $basketItemFormKey = 0;
 
     // Basket price view
@@ -205,6 +203,17 @@ class Dashboard extends Component
         $this->basketFormName  = '';
     }
 
+    public function updateBasket(int $id, string $name, string $color): void
+    {
+        $name = trim($name);
+        if (empty($name) || mb_strlen($name) > 80) return;
+
+        UserBasket::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->where('type', 'saved')
+            ->update(['name' => $name, 'color' => $color]);
+    }
+
     public function editBasket(int $id): void
     {
         $basket = UserBasket::where('user_id', auth()->id())
@@ -315,23 +324,19 @@ class Dashboard extends Component
 
     public function toggleBasket(int $id): void
     {
-        $this->openBasketId      = ($this->openBasketId === $id) ? null : $id;
-        $this->newItemProductId  = 0;
-        $this->newItemQuantity   = 1.0;
+        $this->openBasketId = ($this->openBasketId === $id) ? null : $id;
         $this->basketItemFormKey++;
     }
 
-    public function addItemToBasket(int $basketId): void
+    public function addItemToBasket(int $basketId, int $productId, float $qty): void
     {
-        if (!$this->newItemProductId || $this->newItemQuantity <= 0) return;
+        if (!$productId || $qty <= 0) return;
 
         UserBasket::where('id', $basketId)
             ->where('user_id', auth()->id())
             ->firstOrFail()
-            ->addItem($this->newItemProductId, $this->newItemQuantity);
+            ->addItem($productId, round($qty, 2));
 
-        $this->newItemProductId  = 0;
-        $this->newItemQuantity   = 1.0;
         $this->basketItemFormKey++;
     }
 

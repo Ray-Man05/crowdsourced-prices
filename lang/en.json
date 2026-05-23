@@ -151,5 +151,23 @@
     "Location & Currency": "Location & Currency",
     "Change where you're located and your preferred currency.": "Change where you're located and your preferred currency.",
     "This can only be changed once per week.": "This can only be changed once per week.",
-    "Locked until :date.": "Locked until :date."
+    "Locked until :date.": "Locked until :date.",
+
+    "Know the real cost of living": "Know the real cost of living",
+    "Crowdsourced price tracking": "Crowdsourced price tracking",
+    "Know the real": "Know the real",
+    "cost of living.": "cost of living.",
+    "Community-powered price data from cities around the world. Compare, contribute, and plan smarter.": "Community-powered price data from cities around the world. Compare, contribute, and plan smarter.",
+    "Open Catalog": "Open Catalog",
+    "Browse Catalog": "Browse Catalog",
+    "Explore Map": "Explore Map",
+    "Get started": "Get started",
+    "Start for free": "Start for free",
+    "Cities": "Cities",
+    "Countries": "Countries",
+
+    "With local data": "With local data",
+    "Only products with price data in :city": "Only products with price data in :city",
+    "Has price data in your city": "Has price data in your city",
+    "Add item": "Add item"
 }

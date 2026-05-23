@@ -151,5 +151,23 @@
     "Location & Currency": "Localisation et devise",
     "Change where you're located and your preferred currency.": "Modifiez votre localisation et votre devise préférée.",
     "This can only be changed once per week.": "Ces informations ne peuvent être modifiées qu'une fois par semaine.",
-    "Locked until :date.": "Verrouillé jusqu'au :date."
+    "Locked until :date.": "Verrouillé jusqu'au :date.",
+
+    "Know the real cost of living": "Connaissez le vrai coût de la vie",
+    "Crowdsourced price tracking": "Suivi des prix participatif",
+    "Know the real": "Connaissez le vrai",
+    "cost of living.": "coût de la vie.",
+    "Community-powered price data from cities around the world. Compare, contribute, and plan smarter.": "Données de prix participatives depuis des villes du monde entier. Comparez, contribuez et planifiez plus intelligemment.",
+    "Open Catalog": "Ouvrir le catalogue",
+    "Browse Catalog": "Parcourir le catalogue",
+    "Explore Map": "Explorer la carte",
+    "Get started": "Commencer",
+    "Start for free": "Commencer gratuitement",
+    "Cities": "Villes",
+    "Countries": "Pays",
+
+    "With local data": "Données locales",
+    "Only products with price data in :city": "Uniquement les produits avec des données dans :city",
+    "Has price data in your city": "A des données de prix dans votre ville",
+    "Add item": "Ajouter un article"
 }

@@ -48,6 +48,7 @@
     {{-- Chart --}}
     <div class="p-5">
         <div class="hidden bg-primary-500" id="primary-color-probe"></div>
+        <div class="hidden bg-accent-500" id="accent-color-probe"></div>
         @if ($rows->isEmpty())
             <div class="h-52 flex flex-col items-center justify-center">
                 <svg class="h-8 w-8 text-neutral-300 dark:text-neutral-600 mb-2"
@@ -70,7 +71,7 @@
 
 @script
 <script>
-    function drawChart(labels, values, symbol, categoryColor) {
+    function drawChart(labels, values, symbol, categoryColor, mySubmissions) {
         const existing = Chart.getChart('price-chart');
         if (existing) existing.destroy();
 
@@ -81,26 +82,43 @@
         const primary     = getComputedStyle(probe).backgroundColor;
         const primaryFill = primary.replace('rgb(', 'rgba(').replace(')', ', 0.09)');
 
+        const accent = getComputedStyle(document.getElementById('accent-color-probe')).backgroundColor;
+
         const isDark = document.documentElement.classList.contains('dark');
 
         const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
         const tickColor = isDark ? '#6b7280' : '#9ca3af';
 
+        const subs     = mySubmissions ?? {};
+        const myValues = labels.map(label => subs[label]?.price ?? null);
+
         new Chart(canvas, {
             type: 'line',
             data: {
                 labels,
-                datasets: [{
-                    data:                 values,
-                    borderColor:          primary,
-                    backgroundColor:      primaryFill,
-                    borderWidth:          2,
-                    pointRadius:          2,
-                    pointHoverRadius:     5,
-                    pointBackgroundColor: primary,
-                    fill:                 true,
-                    tension:              0.4,
-                }],
+                datasets: [
+                    {
+                        data:                 values,
+                        borderColor:          primary,
+                        backgroundColor:      primaryFill,
+                        borderWidth:          2,
+                        pointRadius:          2,
+                        pointHoverRadius:     5,
+                        pointBackgroundColor: primary,
+                        fill:                 true,
+                        tension:              0.4,
+                    },
+                    {
+                        data:                 myValues,
+                        showLine:             false,
+                        pointRadius:          myValues.map(v => v !== null ? 5 : 0),
+                        pointHoverRadius:     myValues.map(v => v !== null ? 7 : 0),
+                        pointHitRadius:       myValues.map(v => v !== null ? 10 : 0),
+                        pointBackgroundColor: accent,
+                        pointBorderColor:     accent,
+                        pointBorderWidth:     2,
+                    },
+                ],
             },
             options: {
                 responsive:          true,
@@ -114,8 +132,11 @@
                         borderColor:     isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)',
                         borderWidth:     1,
                         padding:         10,
+                        filter:          item => item.parsed.y !== null,
                         callbacks: {
-                            label: ctx => ' ' + symbol + ctx.parsed.y.toFixed(2),
+                            label: ctx => ctx.datasetIndex === 1
+                                ? ' {{ __("Your submission") }}: ' + symbol + ctx.parsed.y.toFixed(2)
+                                : ' ' + symbol + ctx.parsed.y.toFixed(2),
                         },
                     },
                 },
@@ -138,15 +159,17 @@
         @json($rows->pluck('date')),
         @json($rows->pluck('average')),
         @json($rows->first()['symbol'] ?? ''),
-        @json($product->category->color)
+        @json($product->category->color),
+        @json($mySubmissions)
     );
 
-    $wire.$on('chart-data-updated', ({ rows, categoryColor }) => {
+    $wire.$on('chart-data-updated', ({ rows, categoryColor, mySubmissions }) => {
         drawChart(
             rows.map(r => r.date),
             rows.map(r => r.average),
             rows.length ? rows[0].symbol : '',
-            categoryColor
+            categoryColor,
+            mySubmissions ?? {}
         );
     });
 </script>

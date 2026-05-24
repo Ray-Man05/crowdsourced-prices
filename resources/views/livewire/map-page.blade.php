@@ -23,7 +23,24 @@
             : '-translate-x-full sm:translate-x-0 sm:w-0'">
         <div class="w-72 flex flex-col flex-1 overflow-hidden min-h-0">
 
-        {{-- Product picker --}}
+        {{-- ── Mode toggle ── --}}
+        <div class="p-3 border-b border-neutral-200 dark:border-white/[0.06]">
+            <div class="flex rounded-lg border border-neutral-200 dark:border-white/[0.08]
+                        bg-neutral-100 dark:bg-white/[0.04] p-0.5 gap-0.5">
+                @foreach ($modes as $modeKey => $modeLabel)
+                    <button
+                        wire:click="$set('mapMode', '{{ $modeKey }}')"
+                        class="flex-1 py-1.5 text-xs font-semibold rounded-md transition
+                               {{ $mapMode === $modeKey
+                                   ? 'bg-white dark:bg-[#252938] shadow-sm text-neutral-900 dark:text-neutral-100'
+                                   : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300' }}"
+                    >{{ __($modeLabel) }}</button>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- ── Price mode: product picker ── --}}
+        @if ($mapMode === 'price')
         <div class="p-4 border-b border-neutral-200 dark:border-white/[0.06]">
             <h2 class="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-3">
                 {{ __('Build your basket') }}
@@ -154,62 +171,199 @@
             </div>
         </div>
 
-        {{-- Basket items --}}
-        <div class="flex-1 overflow-y-auto p-3 space-y-1.5">
-            @forelse ($basket as $item)
-                <div class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm border-l-[3px]
-                            bg-neutral-50 dark:bg-white/[0.03] hover:bg-neutral-100 dark:hover:bg-white/[0.06]
-                            transition group"
-                     style="border-color: {{ $item['category_color'] }}">
-                    <div class="flex-1 min-w-0">
-                        <p class="font-medium text-neutral-800 dark:text-neutral-100 truncate text-xs leading-snug">
-                            {{ $item['name'] }}
-                        </p>
-                        <p class="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
-                            × {{ $item['quantity'] }}{{ $item['unit'] ? ' '.$item['unit'] : '' }}
+        {{-- ── Coverage mode: metric selector ── --}}
+        @elseif ($mapMode === 'coverage')
+        <div class="p-4 border-b border-neutral-200 dark:border-white/[0.06]">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-3">
+                {{ __('Coverage metric') }}
+            </h2>
+            <div class="space-y-2">
+                <label class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition border
+                              {{ $coverageMetric === 'estimates'
+                                  ? 'border-primary-400 dark:border-primary-500/60 bg-primary-50 dark:bg-primary-900/20'
+                                  : 'border-neutral-200 dark:border-white/[0.08] bg-neutral-50 dark:bg-white/[0.02] hover:border-neutral-300 dark:hover:border-white/[0.14]' }}">
+                    <input type="radio" wire:model.live="coverageMetric" value="estimates"
+                           class="text-primary-600 border-neutral-300 dark:border-white/[0.1]
+                                  bg-neutral-50 dark:bg-white/[0.04] focus:ring-primary-500/30"/>
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold text-neutral-800 dark:text-neutral-100">{{ __('Submissions') }}</p>
+                        <p class="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
+                            {{ __('Total price estimates submitted per city') }}
                         </p>
                     </div>
-                    <button
-                        wire:click="removeFromBasket({{ $item['product_id'] }})"
-                        class="flex-shrink-0 p-1 rounded-md opacity-0 group-hover:opacity-100
-                               text-neutral-400 hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-900/20
-                               transition focus-visible:opacity-100 focus-visible:outline-none"
-                    >
-                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
-            @empty
-                <div class="flex flex-col items-center justify-center py-10 text-center">
-                    <div class="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-white/[0.04] flex items-center justify-center mb-3">
-                        <svg class="h-5 w-5 text-neutral-400 dark:text-neutral-500"
-                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                  d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-                        </svg>
+                </label>
+                <label class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition border
+                              {{ $coverageMetric === 'products'
+                                  ? 'border-primary-400 dark:border-primary-500/60 bg-primary-50 dark:bg-primary-900/20'
+                                  : 'border-neutral-200 dark:border-white/[0.08] bg-neutral-50 dark:bg-white/[0.02] hover:border-neutral-300 dark:hover:border-white/[0.14]' }}">
+                    <input type="radio" wire:model.live="coverageMetric" value="products"
+                           class="text-primary-600 border-neutral-300 dark:border-white/[0.1]
+                                  bg-neutral-50 dark:bg-white/[0.04] focus:ring-primary-500/30"/>
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold text-neutral-800 dark:text-neutral-100">{{ __('Products with data') }}</p>
+                        <p class="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
+                            {{ __('Distinct products with at least one estimate') }}
+                        </p>
                     </div>
-                    <p class="text-xs font-medium text-neutral-600 dark:text-neutral-400">
-                        {{ __('Basket is empty') }}
-                    </p>
-                    <p class="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5 max-w-[160px]">
-                        {{ __('Add products to compare prices across cities') }}
-                    </p>
-                </div>
-            @endforelse
+                </label>
+            </div>
+        </div>
+        @endif
 
-            @if (!empty($basket) && empty($results))
-                <div class="rounded-lg border border-dashed border-neutral-300 dark:border-white/[0.1]
-                            bg-neutral-50 dark:bg-white/[0.02] px-3 py-2.5 text-[11px]
-                            text-neutral-500 dark:text-neutral-400 flex items-start gap-2 mt-2">
-                    <svg class="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 110 20A10 10 0 0112 2z"/>
-                    </svg>
-                    {{ __('Press "Compute" to show results on the map') }}
-                </div>
+        {{-- ── Scrollable middle section ── --}}
+        <div class="flex-1 overflow-y-auto p-3 space-y-1.5">
+
+            @if ($mapMode === 'price')
+
+                {{-- Basket items --}}
+                @forelse ($basket as $item)
+                    <div class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm border-l-[3px]
+                                bg-neutral-50 dark:bg-white/[0.03] hover:bg-neutral-100 dark:hover:bg-white/[0.06]
+                                transition group"
+                         style="border-color: {{ $item['category_color'] }}">
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-neutral-800 dark:text-neutral-100 truncate text-xs leading-snug">
+                                {{ $item['name'] }}
+                            </p>
+                            <p class="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+                                × {{ $item['quantity'] }}{{ $item['unit'] ? ' '.$item['unit'] : '' }}
+                            </p>
+                        </div>
+                        <button
+                            wire:click="removeFromBasket({{ $item['product_id'] }})"
+                            class="flex-shrink-0 p-1 rounded-md opacity-0 group-hover:opacity-100
+                                   text-neutral-400 hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-900/20
+                                   transition focus-visible:opacity-100 focus-visible:outline-none"
+                        >
+                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                @empty
+                    <div class="flex flex-col items-center justify-center py-10 text-center">
+                        <div class="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-white/[0.04] flex items-center justify-center mb-3">
+                            <svg class="h-5 w-5 text-neutral-400 dark:text-neutral-500"
+                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                      d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                        </div>
+                        <p class="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                            {{ __('Basket is empty') }}
+                        </p>
+                        <p class="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5 max-w-[160px]">
+                            {{ __('Add products to compare prices across cities') }}
+                        </p>
+                    </div>
+                @endforelse
+
+                @if (!empty($basket) && empty($results))
+                    <div class="rounded-lg border border-dashed border-neutral-300 dark:border-white/[0.1]
+                                bg-neutral-50 dark:bg-white/[0.02] px-3 py-2.5 text-[11px]
+                                text-neutral-500 dark:text-neutral-400 flex items-start gap-2 mt-2">
+                        <svg class="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 110 20A10 10 0 0112 2z"/>
+                        </svg>
+                        {{ __('Press "Compute" to show results on the map') }}
+                    </div>
+                @endif
+
+            @elseif ($mapMode === 'coverage')
+
+                @if (empty($results))
+                    <div class="flex flex-col items-center justify-center py-10 text-center">
+                        <div class="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-white/[0.04] flex items-center justify-center mb-3">
+                            <svg class="h-5 w-5 text-neutral-400 dark:text-neutral-500"
+                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                      d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/>
+                            </svg>
+                        </div>
+                        <p class="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                            {{ __('No data yet') }}
+                        </p>
+                        <p class="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5 max-w-[160px]">
+                            {{ __('Press "Compute" to visualize coverage across cities') }}
+                        </p>
+                    </div>
+
+                @elseif ($coverageMetric === 'estimates')
+                    {{-- Estimates metric: simple submission counts --}}
+                    <div class="rounded-lg border border-neutral-200 dark:border-white/[0.08]
+                                bg-neutral-50 dark:bg-white/[0.02] p-3 space-y-3">
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-neutral-500 dark:text-neutral-400">
+                            {{ __('Summary') }}
+                        </p>
+                        <div class="flex items-baseline gap-1.5">
+                            <span class="text-2xl font-bold text-neutral-900 dark:text-neutral-100 tabular-nums">
+                                {{ count($results) }}
+                            </span>
+                            <span class="text-xs text-neutral-500 dark:text-neutral-400">{{ __('cities with data') }}</span>
+                        </div>
+                        <div class="flex items-baseline gap-1.5">
+                            <span class="text-2xl font-bold text-neutral-900 dark:text-neutral-100 tabular-nums">
+                                {{ number_format(collect($results)->sum('value')) }}
+                            </span>
+                            <span class="text-xs text-neutral-500 dark:text-neutral-400">{{ __('total submissions') }}</span>
+                        </div>
+                    </div>
+
+                @elseif ($coverageMetric === 'products' && !empty($coverageSummary))
+                    {{-- Products metric: outlier-aware counts + top products --}}
+                    <div class="rounded-lg border border-neutral-200 dark:border-white/[0.08]
+                                bg-neutral-50 dark:bg-white/[0.02] p-3 space-y-3">
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-neutral-500 dark:text-neutral-400">
+                            {{ __('Summary') }}
+                        </p>
+
+                        {{-- Cities with complete coverage --}}
+                        <div>
+                            <div class="flex items-baseline gap-1.5">
+                                <span class="text-2xl font-bold text-neutral-900 dark:text-neutral-100 tabular-nums">
+                                    {{ $coverageSummary['full_coverage_cities'] }}
+                                </span>
+                                <span class="text-xs text-neutral-500 dark:text-neutral-400 leading-tight">
+                                    {{ __('cities with all') }}
+                                    <strong class="text-neutral-700 dark:text-neutral-300">{{ $coverageSummary['total_products'] }}</strong>
+                                    {{ __('products') }}
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5">
+                                {{ count($results) }} {{ __('cities have at least one product') }}
+                            </p>
+                        </div>
+
+                        {{-- Top 5 products by city breadth --}}
+                        @if (!empty($coverageSummary['top_products']))
+                            <div class="border-t border-neutral-200 dark:border-white/[0.08] pt-3">
+                                <p class="text-[10px] font-bold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 mb-2">
+                                    {{ __('Widest coverage') }}
+                                </p>
+                                @foreach ($coverageSummary['top_products'] as $i => $product)
+                                    <div class="flex items-center gap-2 py-1">
+                                        <span class="text-[10px] font-bold tabular-nums w-4 text-right
+                                                     text-neutral-400 dark:text-neutral-500 flex-shrink-0">
+                                            {{ $i + 1 }}
+                                        </span>
+                                        <span class="flex-1 text-xs text-neutral-700 dark:text-neutral-300 truncate">
+                                            {{ $product['name'] }}
+                                        </span>
+                                        <span class="text-xs font-semibold tabular-nums
+                                                     text-neutral-900 dark:text-neutral-100 flex-shrink-0">
+                                            {{ $product['city_count'] }}
+                                        </span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
             @endif
 
+            {{-- Stale warning (shared, mode-aware text) --}}
             @if ($resultsStale)
                 <div class="rounded-lg border border-warning-300 dark:border-warning-500/40
                             bg-warning-50 dark:bg-warning-900/20 px-3 py-2.5 text-[11px]
@@ -218,12 +372,17 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
                     </svg>
-                    {{ __('Basket has changed, press "Compute prices" to update.') }}
+                    @if ($mapMode === 'price')
+                        {{ __('Basket has changed, press "Compute prices" to update.') }}
+                    @else
+                        {{ __('Settings have changed, press "Compute coverage" to update.') }}
+                    @endif
                 </div>
             @endif
+
         </div>
 
-        {{-- Compute button --}}
+        {{-- ── Bottom controls ── --}}
         <div class="p-4 border-t border-neutral-200 dark:border-white/[0.06]">
             <div class="flex items-center justify-between mb-3">
                 <span class="text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ __('Period') }}</span>
@@ -249,7 +408,7 @@
                            bg-neutral-50 dark:bg-white/[0.04] focus:ring-primary-500/30"
                 />
                 <span class="text-xs text-neutral-600 dark:text-neutral-400">
-                    {{ __('Recompute on basket change') }}
+                    {{ __('Recompute on change') }}
                 </span>
             </label>
             <button
@@ -266,7 +425,13 @@
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                 </svg>
-                <span wire:loading.remove>{{ __('Compute prices') }}</span>
+                <span wire:loading.remove>
+                    @if ($mapMode === 'price')
+                        {{ __('Compute prices') }}
+                    @else
+                        {{ __('Compute coverage') }}
+                    @endif
+                </span>
                 <span wire:loading>{{ __('Computing…') }}</span>
             </button>
 
@@ -281,42 +446,50 @@
     <div class="flex-1 relative min-w-0">
         <div id="map" wire:ignore class="w-full h-full z-0"></div>
 
-
         {{-- Legend (bottom-right) --}}
         @if (!empty($results))
             @php
-                $minTotal = collect($results)->min('total');
-                $maxTotal = collect($results)->max('total');
-                $currency = auth()->user()->effectiveCurrency();
+                $minVal = collect($results)->min('value');
+                $maxVal = collect($results)->max('value');
             @endphp
             <div class="absolute bottom-4 right-4 z-[500]
                         bg-white dark:bg-[#1a1e2d]
                         border border-neutral-200 dark:border-white/[0.1]
                         rounded-xl shadow-card-md p-3 w-48">
                 <p class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">
-                    {{ __('Basket total') }}
+                    @if ($mapMode === 'price')
+                        {{ __('Basket total') }}
+                    @elseif ($coverageMetric === 'products')
+                        {{ __('Products with data') }}
+                    @else
+                        {{ __('Submissions') }}
+                    @endif
                 </p>
                 <div class="w-full h-2 rounded-full mb-2"
                      style="background: linear-gradient(to right, {{ $colorMin }}, {{ $colorMax }})">
                 </div>
                 <div class="flex items-center justify-between text-xs tabular-nums">
-                    <div class="flex items-center gap-1">
-                        <span class="w-2 h-2 rounded-full" style="background: {{ $colorMin }}"></span>
-                        <span class="text-neutral-700 dark:text-neutral-200">{{ $currency->format($minTotal) }}</span>
-                    </div>
-                    <div class="flex items-center gap-1">
-                        <span class="text-neutral-700 dark:text-neutral-200">{{ $currency->format($maxTotal) }}</span>
-                        <span class="w-2 h-2 rounded-full" style="background: {{ $colorMax }}"></span>
-                    </div>
+                    @if ($mapMode === 'price')
+                        @php $currency = auth()->user()->effectiveCurrency(); @endphp
+                        <div class="flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full" style="background: {{ $colorMin }}"></span>
+                            <span class="text-neutral-700 dark:text-neutral-200">{{ $currency->format($minVal) }}</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-neutral-700 dark:text-neutral-200">{{ $currency->format($maxVal) }}</span>
+                            <span class="w-2 h-2 rounded-full" style="background: {{ $colorMax }}"></span>
+                        </div>
+                    @else
+                        <div class="flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full" style="background: {{ $colorMin }}"></span>
+                            <span class="text-neutral-700 dark:text-neutral-200">{{ $minVal }}</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-neutral-700 dark:text-neutral-200">{{ $maxVal }}</span>
+                            <span class="w-2 h-2 rounded-full" style="background: {{ $colorMax }}"></span>
+                        </div>
+                    @endif
                 </div>
-                {{-- Partial data note removed (unused feature)
-                @if (collect($results)->contains('complete', false))
-                    <p class="text-[10px] text-neutral-400 mt-2 italic border-t border-neutral-100
-                              dark:border-white/[0.06] pt-2">
-                        * {{ __('Partial data') }}
-                    </p>
-                @endif
-                --}}
             </div>
         @endif
 
@@ -475,7 +648,7 @@
         maxZoom: 18,
     }).addTo(map);
 
-    let markers      = [];
+    let markers         = [];
     let currentResults  = [];
     let currentStyle    = { opacity: 0.85, stroke: 2, scale: 10 };
     let currentColorMin = '#22c55e';
@@ -485,7 +658,7 @@
         return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
     }
 
-    function priceColor(value, min, max, hexMin, hexMax) {
+    function interpolateColor(value, min, max, hexMin, hexMax) {
         if (max === min) return hexMin;
         const t = (value - min) / (max - min);
         const [r1,g1,b1] = hexToRgb(hexMin);
@@ -496,12 +669,12 @@
     function drawMarkers(results, style, hexMin, hexMax) {
         markers.forEach(m => m.remove());
         markers = [];
-        const totals = results.map(r => r.total);
-        const min = Math.min(...totals);
-        const max = Math.max(...totals);
+        const values = results.map(r => r.value);
+        const min = Math.min(...values);
+        const max = Math.max(...values);
 
         results.forEach(r => {
-            const color = priceColor(r.total, min, max, hexMin, hexMax);
+            const color = interpolateColor(r.value, min, max, hexMin, hexMax);
             const marker = L.circleMarker([r.lat, r.lng], {
                 radius:      style.scale ?? 10,
                 fillColor:   color,
@@ -510,24 +683,7 @@
                 fillOpacity: style.opacity,
                 opacity:     1,
             }).addTo(map);
-            const rows = (r.breakdown || []).map(b => {
-                const qty = b.unit ? `${b.qty} ${b.unit}` : `${b.qty}`;
-                return `<tr>` +
-                    `<td style="padding:2px 10px 2px 0;white-space:nowrap">${b.name} ×${qty}</td>` +
-                    `<td style="padding:2px 0;text-align:right;white-space:nowrap">${r.symbol}${b.subtotal.toFixed(2)}</td>` +
-                    `</tr>`;
-            }).join('');
-            marker.bindPopup(
-                `<strong>${r.city_name}</strong>, ${r.country}` +
-                (rows
-                    ? `<table style="border-collapse:collapse;margin-top:6px;font-size:12px">${rows}` +
-                      `<tr><td colspan="2" style="border-top:1px solid #ddd;padding-top:3px"></td></tr>` +
-                      `<tr style="font-weight:600">` +
-                      `<td style="padding:2px 10px 2px 0">Total</td>` +
-                      `<td style="padding:2px 0;text-align:right">${r.symbol}${r.total.toFixed(2)}</td>` +
-                      `</tr></table>`
-                    : `<br><strong>${r.symbol}${r.total.toFixed(2)}</strong>`)
-            );
+            marker.bindPopup(r.popup_html);
             markers.push(marker);
         });
     }

@@ -5,13 +5,23 @@ namespace App\Livewire;
 use App\Livewire\Concerns\HasBasket;
 use App\Models\Category;
 use App\Models\City;
+use App\Models\PriceEstimate;
 use App\Models\Product;
 use App\Models\UserBasket;
+use Illuminate\Support\Carbon;
 use Livewire\Component;
 
 class MapPage extends Component
 {
     use HasBasket;
+
+    public string $mapMode        = 'price';
+    public string $coverageMetric = 'estimates';
+
+    public array $modes = [
+        'price'    => 'Price',
+        'coverage' => 'Coverage',
+    ];
 
     public int    $selectedProductId = 0;
     public float  $selectedQuantity  = 1;
@@ -31,7 +41,8 @@ class MapPage extends Component
         'custom'     => ['min' => '#22c55e', 'max' => '#ef4444', 'label' => 'Custom'],
     ];
 
-    public array $results = [];
+    public array $results         = [];
+    public array $coverageSummary = [];
 
     public function mount(): void
     {
@@ -52,6 +63,8 @@ class MapPage extends Component
     {
         $this->dispatch('product-added-to-basket');
 
+        if ($this->mapMode !== 'price') return;
+
         if ($this->recomputeOnChange) {
             $this->compute();
         } elseif (!empty($this->results)) {
@@ -61,6 +74,8 @@ class MapPage extends Component
 
     protected function afterItemRemoved(int $productId): void
     {
+        if ($this->mapMode !== 'price') return;
+
         if ($this->recomputeOnChange) {
             $this->compute();
         } elseif (!empty($this->results)) {
@@ -70,8 +85,9 @@ class MapPage extends Component
 
     protected function afterBasketEmptied(): void
     {
-        $this->results      = [];
-        $this->resultsStale = false;
+        $this->results         = [];
+        $this->coverageSummary = [];
+        $this->resultsStale    = false;
         $this->dispatch('markers-cleared');
     }
 
@@ -96,6 +112,25 @@ class MapPage extends Component
 
     // ── Livewire lifecycle ─────────────────────────────────────────────────
 
+    public function updatedMapMode(): void
+    {
+        $this->results         = [];
+        $this->coverageSummary = [];
+        $this->resultsStale    = false;
+        $this->error           = '';
+        $this->dispatch('markers-cleared');
+    }
+
+    public function updatedCoverageMetric(): void
+    {
+        if ($this->recomputeOnChange && !empty($this->results)) {
+            $this->compute();
+        } elseif (!empty($this->results)) {
+            $this->resultsStale    = true;
+            $this->coverageSummary = [];
+        }
+    }
+
     public function updatedDays(): void
     {
         if ($this->recomputeOnChange) {
@@ -115,9 +150,20 @@ class MapPage extends Component
     public function compute(): void
     {
         $this->resultsStale = false;
-        $this->error   = '';
-        $this->results = [];
+        $this->error        = '';
+        $this->results      = [];
 
+        if ($this->mapMode === 'coverage') {
+            $this->computeCoverage();
+        } else {
+            $this->computePrice();
+        }
+    }
+
+    // ── Private compute methods ────────────────────────────────────────────
+
+    private function computePrice(): void
+    {
         if (empty($this->basket)) {
             $this->error = __('Your basket is empty.');
             return;
@@ -127,17 +173,13 @@ class MapPage extends Component
         $products   = Product::findMany(array_column($this->basket, 'product_id'));
         $aggregator = app(\App\Services\PriceAggregator::class);
 
-        // [cityId => [productId => averagePrice]] — one bulk DB query instead of N×M calls
         $metrics    = $aggregator->bulkMultiCityMetrics($products, $currency, $this->days);
         $productIds = $products->pluck('id')->all();
 
-        // Keep only cities where every basket product has a price
         $completeCityIds = [];
         foreach ($metrics as $cityId => $productMap) {
             foreach ($productIds as $pid) {
-                if (!isset($productMap[$pid])) {
-                    continue 2;
-                }
+                if (!isset($productMap[$pid])) continue 2;
             }
             $completeCityIds[] = $cityId;
         }
@@ -171,15 +213,17 @@ class MapPage extends Component
                 ];
             }
 
+            $total     = round($total, 2);
             $results[] = [
-                'city_id'   => $city->id,
-                'city_name' => $city->name,
-                'country'   => $city->country->name,
-                'lat'       => $city->lat,
-                'lng'       => $city->lng,
-                'total'     => round($total, 2),
-                'symbol'    => $currency->symbol,
-                'breakdown' => $breakdown,
+                'city_id'    => $city->id,
+                'city_name'  => $city->name,
+                'country'    => $city->country->name,
+                'lat'        => $city->lat,
+                'lng'        => $city->lng,
+                'value'      => $total,
+                'popup_html' => $this->buildPricePopup(
+                    $city->name, $city->country->name, $breakdown, $total, $currency->symbol
+                ),
             ];
         }
 
@@ -190,6 +234,157 @@ class MapPage extends Component
             colorMax: $this->colorMax,
         );
     }
+
+    private function computeCoverage(): void
+    {
+        $this->coverageSummary = [];
+
+        if ($this->coverageMetric === 'products') {
+            $this->computeCoverageByProducts();
+        } else {
+            $this->computeCoverageByEstimates();
+        }
+    }
+
+    private function computeCoverageByEstimates(): void
+    {
+        $cutoff = $this->days > 0 ? Carbon::now()->subDays($this->days) : null;
+
+        $rows = PriceEstimate::query()
+            ->join('cities',    'cities.id',    '=', 'price_estimates.city_id')
+            ->join('countries', 'countries.id', '=', 'cities.country_id')
+            ->when($cutoff, fn($q) => $q->where('price_estimates.recorded_at', '>=', $cutoff))
+            ->groupBy('price_estimates.city_id', 'cities.name', 'cities.lat', 'cities.lng', 'countries.name')
+            ->selectRaw('price_estimates.city_id, cities.name AS city_name, cities.lat, cities.lng, countries.name AS country_name, COUNT(*) AS value')
+            ->get();
+
+        if ($rows->isEmpty()) {
+            $this->error = __('No data for this period');
+            return;
+        }
+
+        $results = $rows->map(fn($row) => [
+            'city_id'    => $row->city_id,
+            'city_name'  => $row->city_name,
+            'country'    => $row->country_name,
+            'lat'        => (float) $row->lat,
+            'lng'        => (float) $row->lng,
+            'value'      => (int) $row->value,
+            'popup_html' => $this->buildCoveragePopup($row->city_name, $row->country_name, (int) $row->value, 'estimates'),
+        ])->values()->all();
+
+        $this->results = $results;
+        $this->dispatch('markers-updated',
+            results:  $results,
+            colorMin: $this->colorMin,
+            colorMax: $this->colorMax,
+        );
+    }
+
+    private function computeCoverageByProducts(): void
+    {
+        $currency = auth()->user()->effectiveCurrency();
+        $stats    = app(\App\Services\PriceAggregator::class)->bulkCoverageByProduct($currency, $this->days);
+
+        if (empty($stats['city_product_counts'])) {
+            $this->error = __('No data for this period');
+            return;
+        }
+
+        $cities = City::with('country')
+            ->whereIn('id', array_keys($stats['city_product_counts']))
+            ->get()
+            ->keyBy('id');
+
+        $results = [];
+        foreach ($stats['city_product_counts'] as $cityId => $productCount) {
+            $city = $cities[$cityId] ?? null;
+            if (!$city) continue;
+            $results[] = [
+                'city_id'    => $city->id,
+                'city_name'  => $city->name,
+                'country'    => $city->country->name,
+                'lat'        => (float) $city->lat,
+                'lng'        => (float) $city->lng,
+                'value'      => $productCount,
+                'popup_html' => $this->buildCoveragePopup($city->name, $city->country->name, $productCount, 'products'),
+            ];
+        }
+
+        if (empty($results)) {
+            $this->error = __('No data for this period');
+            return;
+        }
+
+        // Cities considered "fully covered" = have clean data for every tracked product.
+        $totalProducts   = $stats['total_products'];
+        $fullCoverage    = count(array_filter(
+            $stats['city_product_counts'],
+            fn($count) => $count === $totalProducts
+        ));
+
+        // Top 5 products by number of cities with clean data.
+        $productCounts = $stats['product_city_counts'];
+        arsort($productCounts);
+        $top5Ids     = array_slice(array_keys($productCounts), 0, 5);
+        $top5Products = Product::findMany($top5Ids)
+            ->sortBy(fn($p) => array_search($p->id, $top5Ids))
+            ->map(fn($p) => ['name' => $p->name, 'city_count' => $productCounts[$p->id]])
+            ->values()
+            ->all();
+
+        $this->results         = $results;
+        $this->coverageSummary = [
+            'full_coverage_cities' => $fullCoverage,
+            'total_products'       => $totalProducts,
+            'top_products'         => $top5Products,
+        ];
+
+        $this->dispatch('markers-updated',
+            results:  $results,
+            colorMin: $this->colorMin,
+            colorMax: $this->colorMax,
+        );
+    }
+
+    // ── Popup builders ─────────────────────────────────────────────────────
+
+    private function buildPricePopup(string $cityName, string $country, array $breakdown, float $total, string $symbol): string
+    {
+        $city = htmlspecialchars($cityName);
+        $ctry = htmlspecialchars($country);
+        $rows = '';
+
+        foreach ($breakdown as $b) {
+            $qty   = $b['unit'] ? "{$b['qty']} {$b['unit']}" : (string) $b['qty'];
+            $name  = htmlspecialchars($b['name']);
+            $sub   = number_format($b['subtotal'], 2);
+            $rows .= "<tr><td style=\"padding:2px 10px 2px 0;white-space:nowrap\">{$name} ×{$qty}</td>"
+                   . "<td style=\"padding:2px 0;text-align:right;white-space:nowrap\">{$symbol}{$sub}</td></tr>";
+        }
+
+        $totalFmt = $symbol . number_format($total, 2);
+
+        if ($rows) {
+            return "<strong>{$city}</strong>, {$ctry}"
+                 . "<table style=\"border-collapse:collapse;margin-top:6px;font-size:12px\">{$rows}"
+                 . "<tr><td colspan=\"2\" style=\"border-top:1px solid #ddd;padding-top:3px\"></td></tr>"
+                 . "<tr style=\"font-weight:600\"><td style=\"padding:2px 10px 2px 0\">Total</td>"
+                 . "<td style=\"padding:2px 0;text-align:right\">{$totalFmt}</td></tr></table>";
+        }
+
+        return "<strong>{$city}</strong>, {$ctry}<br><strong>{$totalFmt}</strong>";
+    }
+
+    private function buildCoveragePopup(string $cityName, string $country, int $value, string $metric): string
+    {
+        $city  = htmlspecialchars($cityName);
+        $ctry  = htmlspecialchars($country);
+        $label = $metric === 'products' ? __('Products') : __('Submissions');
+        return "<strong>{$city}</strong>, {$ctry}<br><span style=\"font-size:13px\">{$value} {$label}</span>";
+    }
+
+    // ── Color scale ────────────────────────────────────────────────────────
 
     public function updatedColorScale(): void
     {

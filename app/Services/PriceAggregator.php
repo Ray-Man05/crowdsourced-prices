@@ -501,6 +501,112 @@ class PriceAggregator
     }
 
     /**
+     * Coverage statistics for the "products with data" map mode.
+     *
+     * Loads all estimates in three flat DB queries (estimates, exchange rates,
+     * city→country map), applies the same city→country→global outlier-detection
+     * fallback as bulkMultiCityMetrics(), then counts non-outlier products per city
+     * and non-outlier cities per product across the given display window.
+     *
+     * Bounds are always derived from all-time data; only counting uses the window.
+     *
+     * @return array{
+     *     city_product_counts: array<int,int>,  cityId  => # products with clean data
+     *     product_city_counts: array<int,int>,  productId => # cities with clean data
+     *     total_products:      int,             distinct products with any clean data
+     * }
+     */
+    public function bulkCoverageByProduct(Currency $currency, int $days = 0): array
+    {
+        $allEstimates = PriceEstimate::query()
+            ->select('id', 'price', 'currency_id', 'city_id', 'product_id', 'recorded_at')
+            ->get();
+
+        if ($allEstimates->isEmpty()) {
+            return ['city_product_counts' => [], 'product_city_counts' => [], 'total_products' => 0];
+        }
+
+        // Pre-load exchange rates — one query instead of per-estimate convert() calls.
+        $uniqueCurrencyIds = $allEstimates->pluck('currency_id')->unique()->all();
+        $rateMap = ExchangeRate::whereIn('from_currency_id', $uniqueCurrencyIds)
+            ->where('to_currency_id', $currency->id)
+            ->pluck('rate', 'from_currency_id')
+            ->put($currency->id, 1.0)
+            ->all();
+
+        $convertedById = $allEstimates->mapWithKeys(fn($e) => [
+            $e->id => isset($rateMap[$e->currency_id])
+                ? (float) $e->price * $rateMap[$e->currency_id]
+                : null,
+        ]);
+
+        // Pre-load city→country mapping — avoids city.country eager-load per estimate.
+        $cityCountryMap = City::whereIn('id', $allEstimates->pluck('city_id')->unique()->all())
+            ->pluck('country_id', 'id')
+            ->all();
+
+        $cutoff    = $days > 0 ? Carbon::now()->subDays($days) : null;
+        $byProduct = $allEstimates->groupBy('product_id');
+
+        $cityProductCounts = [];
+        $productCityCounts = [];
+
+        foreach ($byProduct as $productId => $group) {
+            $byCityId = $group->groupBy('city_id');
+
+            // City-level bounds (same as boundsPerCity, no relations needed).
+            $cityBoundsMap = $this->boundsPerCity($byCityId, $convertedById);
+
+            // Country-level bounds — inline equivalent of boundsPerCountry()
+            // using the preloaded $cityCountryMap instead of the city.country relation.
+            $countryBoundsMap = $byCityId
+                ->groupBy(fn(Collection $g) => $cityCountryMap[$g->first()->city_id] ?? 0)
+                ->map(fn(Collection $cityGroups) =>
+                    $this->computeBounds(
+                        $cityGroups->flatten(1)
+                            ->map(fn($e) => $convertedById[$e->id])
+                            ->filter()
+                            ->values()
+                    )
+                )
+                ->filter();
+
+            $globalBounds = $this->computeBounds(
+                $group->map(fn($e) => $convertedById[$e->id])->filter()->values()
+            );
+
+            // Tag every estimate for this product (bounds from all-time data above).
+            $group->each(function ($e) use ($convertedById, $cityBoundsMap, $countryBoundsMap, $globalBounds, $cityCountryMap) {
+                $countryId          = $cityCountryMap[$e->city_id] ?? 0;
+                $b                  = $cityBoundsMap->get($e->city_id)
+                    ?? $countryBoundsMap->get($countryId)
+                    ?? $globalBounds;
+                $e->converted_price = $convertedById[$e->id] ?? null;
+                $e->is_outlier      = $e->converted_price === null
+                    || ($b !== null && !$this->withinBounds($e->converted_price, $b));
+            });
+
+            // Apply display window, then count cities that have at least one clean estimate.
+            $windowed = $cutoff ? $group->filter(fn($e) => $e->recorded_at >= $cutoff) : $group;
+
+            $productCityCounts[$productId] = 0;
+
+            foreach ($windowed->groupBy('city_id') as $cityId => $cityGroup) {
+                if ($cityGroup->contains('is_outlier', false)) {
+                    $cityProductCounts[$cityId] = ($cityProductCounts[$cityId] ?? 0) + 1;
+                    $productCityCounts[$productId]++;
+                }
+            }
+        }
+
+        return [
+            'city_product_counts' => $cityProductCounts,
+            'product_city_counts' => $productCityCounts,
+            'total_products'      => count(array_filter($productCityCounts)),
+        ];
+    }
+
+    /**
      * Whether a single active estimate is flagged as an outlier in its city context.
      * Bounds are derived from all-time data for the product+city combination.
      */

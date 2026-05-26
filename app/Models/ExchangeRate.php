@@ -28,7 +28,7 @@ class ExchangeRate extends Model
 
     /**
      * Update or create the rate between two currencies.
-     * also automatically creates the inverse rate.
+     * Also automatically creates the inverse rate.
      */
     public static function setRate(
         Currency $from,
@@ -49,5 +49,28 @@ class ExchangeRate extends Model
 
         Cache::forget("exchange_rate:{$from->id}:{$to->id}");
         Cache::forget("exchange_rate:{$to->id}:{$from->id}");
+    }
+
+    /**
+     * Build the pair of raw records (forward + inverse) for a given rate,
+     * without touching the database or the cache.
+     *
+     * This mirrors exactly what setRate() writes, but returns plain arrays
+     * suitable for a bulk upsert() call. Use this when inserting many rates
+     * at once; use setRate() for individual updates where cache invalidation matters.
+     *
+     * @return array{array, array}  Always exactly two records: [forward, inverse]
+     */
+    public static function buildRecordPair(
+        Currency $from,
+        Currency $to,
+        float $rate,
+    ): array {
+        $now = Carbon::now();
+
+        return [
+            ['from_currency_id' => $from->id, 'to_currency_id' => $to->id, 'rate' => $rate,           'fetched_at' => $now],
+            ['from_currency_id' => $to->id,   'to_currency_id' => $from->id, 'rate' => 1.0 / $rate,   'fetched_at' => $now],
+        ];
     }
 }

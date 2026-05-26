@@ -27,7 +27,7 @@ class MapPage extends Component
     public float  $selectedQuantity  = 1;
     public int    $days              = 365;
     public string $error             = '';
-    public bool   $recomputeOnChange = false;
+    public bool   $recomputeOnChange = true;
     public bool   $resultsStale      = false;
 
     public string $colorScale  = 'green_red';
@@ -93,13 +93,14 @@ class MapPage extends Component
 
     // ── Public Livewire actions ────────────────────────────────────────────
 
-    public function addToBasket(): void
+    public function addToBasket(float $quantity = 0): void
     {
-        if (!$this->selectedProductId || $this->selectedQuantity <= 0) {
-            return;
-        }
+        if (!$this->selectedProductId) return;
 
-        $this->addItem($this->selectedProductId, $this->selectedQuantity);
+        $qty = $quantity > 0 ? $quantity : $this->selectedQuantity;
+        if ($qty <= 0) return;
+
+        $this->addItem($this->selectedProductId, $qty);
 
         $this->selectedProductId = 0;
         $this->selectedQuantity  = 1;

@@ -1,4 +1,31 @@
-<div x-data="{ sidebarOpen: window.innerWidth >= 640 }"
+<div x-data="{
+    sidebarOpen: window.innerWidth >= 640,
+    sidebarWidth: parseInt(localStorage.getItem('map-sidebar-width') || '288'),
+    isResizing: false,
+    startResize(e) {
+        this.isResizing = true;
+        const startX = e.clientX;
+        const startWidth = this.sidebarWidth;
+        const onMove = (ev) => {
+            this.sidebarWidth = Math.max(200, Math.min(520, startWidth + ev.clientX - startX));
+            window.dispatchEvent(new CustomEvent('sidebar-toggled'));
+        };
+        const onUp = () => {
+            this.isResizing = false;
+            localStorage.setItem('map-sidebar-width', this.sidebarWidth);
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    },
+    init() {
+        const saved = localStorage.getItem('map-recompute-on-change');
+        if (saved !== null) {
+            $wire.set('recomputeOnChange', saved === 'true');
+        }
+    }
+}"
      @keydown.window="if ($event.key === '[' && !$event.ctrlKey && !$event.metaKey && !['INPUT','TEXTAREA','SELECT'].includes($event.target.tagName)) { sidebarOpen = !sidebarOpen; setTimeout(() => window.dispatchEvent(new CustomEvent('sidebar-toggled')), 310); }"
      class="flex h-[calc(100vh-3.5rem)] overflow-hidden relative">
 
@@ -14,14 +41,143 @@
          class="sm:hidden fixed inset-0 z-30 bg-black/50">
     </div>
 
+    {{-- ─── Tutorial modal ─── --}}
+    <div x-data="{
+             show: !localStorage.getItem('map-tutorial-dismissed'),
+             dontShow: false,
+             dismiss() {
+                 if (this.dontShow) localStorage.setItem('map-tutorial-dismissed', '1');
+                 this.show = false;
+             }
+         }"
+         x-show="show"
+         x-cloak
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/50">
+
+        <div @click.outside="dismiss()"
+             class="w-full max-w-md bg-white dark:bg-[#1a1e2d]
+                    rounded-2xl shadow-card-md border border-neutral-200 dark:border-white/[0.1]
+                    overflow-hidden">
+
+            {{-- Header --}}
+            <div class="px-6 py-5 border-b border-neutral-200 dark:border-white/[0.06]">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-primary-100 dark:bg-primary-900/30
+                                flex items-center justify-center shrink-0">
+                        <svg class="h-5 w-5 text-primary-600 dark:text-primary-400"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                  d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-semibold text-neutral-900 dark:text-white">
+                            {{ __('How the map works') }}
+                        </h2>
+                        <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                            {{ __('A quick guide to the two modes') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Body --}}
+            <div class="px-6 py-5 space-y-4">
+                <div class="flex gap-3">
+                    <div class="w-7 h-7 rounded-lg bg-success-100 dark:bg-success-900/30
+                                flex items-center justify-center shrink-0 mt-0.5">
+                        <svg class="h-3.5 w-3.5 text-success-600 dark:text-success-400"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                            {{ __('Price mode') }}
+                        </p>
+                        <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
+                            {{ __('Build a basket of products with quantities, then click "Compute prices" to see the combined basket cost for each city on the map.') }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <div class="w-7 h-7 rounded-lg bg-accent-100 dark:bg-accent-900/30
+                                flex items-center justify-center shrink-0 mt-0.5">
+                        <svg class="h-3.5 w-3.5 text-accent-600 dark:text-accent-400"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                  {{-- d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/> --}}
+                                  d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                            {{ __('Coverage mode') }}
+                        </p>
+                        <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
+                            {{ __('Visualize data density and see how many price submissions or distinct products each city has. Useful for spotting where data is sparse.') }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="border-t border-neutral-200 dark:border-white/[0.06] pt-4 space-y-2">
+                    <p class="text-[10px] font-bold uppercase tracking-widest
+                               text-neutral-400 dark:text-neutral-500 mb-2">
+                        {{ __('Tips') }}
+                    </p>
+                    @foreach ([
+                        __('Click any city marker to see a price breakdown or count.'),
+                        __('Use the Display panel (bottom-left) to adjust marker size and colors.'),
+                        __('Toggle the sidebar with the Hide button or press the "[" key.'),
+                    ] as $tip)
+                        <div class="flex items-start gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-primary-400 shrink-0 mt-1.5"></span>
+                            <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ $tip }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Footer --}}
+            <div class="px-6 py-4 border-t border-neutral-200 dark:border-white/[0.06]
+                        bg-neutral-50 dark:bg-white/[0.02]
+                        flex items-center justify-between gap-4">
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" x-model="dontShow"
+                           class="rounded text-primary-600 border-neutral-300 dark:border-white/[0.1]
+                                  bg-neutral-50 dark:bg-white/[0.04] focus:ring-primary-500/30"/>
+                    <span class="text-xs text-neutral-500 dark:text-neutral-400">
+                        {{ __("Don't show again") }}
+                    </span>
+                </label>
+                <button @click="dismiss()"
+                        class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white
+                               text-sm font-semibold rounded-lg transition
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+                    {{ __('Got it') }}
+                </button>
+            </div>
+        </div>
+    </div>
+
     {{-- ─── Sidebar ─── --}}
     <div class="fixed sm:relative z-40 sm:z-auto top-14 bottom-0 sm:top-auto sm:bottom-auto left-0
                 w-72 flex-shrink-0 bg-surface-card border-r border-neutral-200 dark:border-white/[0.06]
-                flex flex-col overflow-hidden transition-[width,transform] duration-300 ease-in-out"
-         :class="sidebarOpen
-            ? 'translate-x-0 sm:w-72'
-            : '-translate-x-full sm:translate-x-0 sm:w-0'">
-        <div class="w-72 flex flex-col flex-1 overflow-hidden min-h-0">
+                flex flex-col overflow-hidden"
+         :class="[
+             sidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0',
+             isResizing ? '' : 'transition-[width,transform] duration-300 ease-in-out'
+         ]"
+         :style="window.innerWidth >= 640 ? 'width: ' + (sidebarOpen ? sidebarWidth : 0) + 'px' : ''">
+        <div class="w-full flex flex-col flex-1 overflow-hidden min-h-0" style="min-width: 200px">
 
         {{-- ── Mode toggle ── --}}
         <div class="p-3 border-b border-neutral-200 dark:border-white/[0.06]">
@@ -52,6 +208,8 @@
                     search: '',
                     activeIndex: -1,
                     selectedProductId: null,
+                    selectedUnit: '',
+                    qty: 1,
                     locale: document.documentElement.lang ?? 'en',
                     products: {{ Js::from($categories) }},
                     getName(obj) {
@@ -72,6 +230,7 @@
                     },
                     selectProduct(product) {
                         this.selectedProductId = product.id;
+                        this.selectedUnit = product.unit ? product.unit.symbol : '';
                         this.search = this.getName(product.name);
                         this.open = false;
                         this.activeIndex = -1;
@@ -87,7 +246,7 @@
                         });
                     }
                 }"
-                @product-added-to-basket.window="search = ''; selectedProductId = null; open = false; activeIndex = -1"
+                @product-added-to-basket.window="search = ''; selectedProductId = null; selectedUnit = ''; qty = 1; open = false; activeIndex = -1"
                 class="relative"
             >
                 <div class="relative">
@@ -147,27 +306,40 @@
                         </div>
                     </template>
                 </div>
-            </div>
 
-            <div class="flex gap-2">
-                <input
-                    type="number"
-                    wire:model="selectedQuantity"
-                    min="0.01"
-                    step="0.01"
-                    class="w-20 text-sm rounded-lg border-neutral-300 dark:border-white/[0.1]
-                           bg-neutral-50 dark:bg-white/[0.04] text-neutral-800 dark:text-neutral-100
-                           focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500
-                           focus:bg-white dark:focus:bg-white/[0.07] transition"
-                />
-                <button
-                    wire:click="addToBasket"
-                    class="flex-1 px-3 py-2 bg-primary-600 hover:bg-primary-700 active:bg-primary-800
-                           text-white text-sm font-semibold rounded-lg transition
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                >
-                    {{ __('Add') }}
-                </button>
+                {{-- Quantity slider + input + Add --}}
+                <div class="mt-3">
+                    <div class="flex items-center gap-2 mb-2">
+                        <input type="range"
+                               x-model.number="qty"
+                               min="0.1" max="10" step="0.1"
+                               :disabled="!selectedProductId"
+                               class="flex-1 min-w-0 h-1.5 rounded-full appearance-none cursor-pointer
+                                      accent-primary-500 disabled:opacity-40 disabled:cursor-not-allowed"/>
+                        <input type="number"
+                               x-model.number="qty"
+                               min="0.01" step="0.01"
+                               class="w-16 text-sm text-center rounded-lg
+                                      border-neutral-300 dark:border-white/[0.1]
+                                      bg-neutral-50 dark:bg-white/[0.04] text-neutral-800 dark:text-neutral-100
+                                      focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500
+                                      focus:bg-white dark:focus:bg-white/[0.07] transition"/>
+                        <span x-show="selectedUnit" x-text="selectedUnit"
+                              class="text-sm font-bold text-neutral-700 dark:text-neutral-200
+                                     shrink-0 min-w-[2rem] text-left">
+                        </span>
+                    </div>
+                    <button
+                        @click="selectedProductId && $wire.addToBasket(qty)"
+                        :disabled="!selectedProductId"
+                        class="w-full px-3 py-2 bg-primary-600 hover:bg-primary-700 active:bg-primary-800
+                               text-white text-sm font-semibold rounded-lg transition
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500
+                               disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                        {{ __('Add to basket') }}
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -225,8 +397,11 @@
                             <p class="font-medium text-neutral-800 dark:text-neutral-100 truncate text-xs leading-snug">
                                 {{ $item['name'] }}
                             </p>
-                            <p class="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
-                                × {{ $item['quantity'] }}{{ $item['unit'] ? ' '.$item['unit'] : '' }}
+                            <p class="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 flex items-baseline gap-1">
+                                <span>× {{ $item['quantity'] }}</span>
+                                @if ($item['unit'])
+                                    <span class="text-sm font-bold text-neutral-700 dark:text-neutral-200">{{ $item['unit'] }}</span>
+                                @endif
                             </p>
                         </div>
                         <button
@@ -404,6 +579,7 @@
                 <input
                     type="checkbox"
                     wire:model.live="recomputeOnChange"
+                    @change="localStorage.setItem('map-recompute-on-change', $event.target.checked.toString())"
                     class="rounded text-primary-600 border-neutral-300 dark:border-white/[0.1]
                            bg-neutral-50 dark:bg-white/[0.04] focus:ring-primary-500/30"
                 />
@@ -439,8 +615,20 @@
                 <p class="text-[16px] mt-2 text-center text-error-500 dark:text-error-400">{{ $error }}</p>
             @endif
         </div>
-        </div>{{-- /inner w-72 wrapper --}}
+        </div>{{-- /inner wrapper --}}
     </div>{{-- /sidebar --}}
+
+    {{-- ─── Resize handle (desktop only) ─── --}}
+    <div x-show="sidebarOpen" x-cloak
+         class="hidden sm:flex w-2 shrink-0 relative cursor-col-resize z-40 group items-stretch"
+         @mousedown.prevent="startResize($event)">
+        <div class="absolute inset-y-0 left-1/2 -translate-x-1/2 w-0.5
+                    bg-neutral-200 dark:bg-white/[0.08]
+                    group-hover:bg-primary-400 group-hover:w-1
+                    opacity-0 group-hover:opacity-100
+                    transition-all duration-150 rounded-full">
+        </div>
+    </div>
 
     {{-- ─── Map area ─── --}}
     <div class="flex-1 relative min-w-0">

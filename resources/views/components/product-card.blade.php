@@ -53,7 +53,7 @@
                     </span>
                 @endif
             </div>
-            <h3 class="text-base font-bold text-neutral-900 dark:text-neutral-50 leading-snug tracking-tight">
+            <h3 class="text-lg font-bold text-neutral-900 dark:text-neutral-50 leading-snug tracking-tight">
                 {{ $product->name }}
             </h3>
         </div>
@@ -68,23 +68,25 @@
                         </span>
                     @endif
                 </p>
-                <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1.5 tabular-nums">
-                    {{ $days }}-{{ __('day avg') }} · {{ $city->name }}
+                <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 tabular-nums">
+                    {{ $days }}-{{ __('day avg') }} · <span class="font-medium text-neutral-700 dark:text-neutral-300">{{ $city->name }}</span>
                 </p>
             @elseif ($userStatus === 'active_outlier')
-                {{-- Flagged estimate: show a nudge instead of a generic "no data" --}}
                 <p class="text-lg font-bold text-warning-400 dark:text-warning-500">—</p>
-                <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
                     {{ __('Your estimate was excluded') }}
                 </p>
             @elseif ($hasCityData)
                 <p class="text-lg font-bold text-neutral-300 dark:text-neutral-600">—</p>
-                <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
                     {{ __('No data this period') }}
+                </p>
+                <p class="text-sm font-semibold text-primary-500 dark:text-primary-400 mt-1">
+                    {{ __('Submit a price →') }}
                 </p>
             @else
                 <p class="text-lg font-bold text-neutral-300 dark:text-neutral-600">—</p>
-                <p class="text-xs text-primary-500 dark:text-primary-400 mt-1">
+                <p class="text-sm font-semibold text-primary-500 dark:text-primary-400 mt-1">
                     {{ __('Be the first to submit!') }}
                 </p>
             @endif
@@ -103,7 +105,7 @@
             $hasAnyPriceData = $formattedPrice || $formatted3xDaysPrice;
         @endphp
 
-        <h3 class="text-xs font-semibold text-neutral-700 dark:text-neutral-300 tracking-tight">
+        <h3 class="text-sm font-semibold text-neutral-700 dark:text-neutral-300 tracking-tight">
             {{ $product->name }}
         </h3>
 
@@ -111,7 +113,7 @@
             @if ($hasAnyPriceData)
                 @if ($formattedPrice)
                     <div class="flex justify-between items-baseline">
-                        <span class="text-xs text-neutral-500 dark:text-neutral-400">{{ $days }}-day avg</span>
+                        <span class="text-xs text-neutral-500 dark:text-neutral-400">{{ $days }}-{{ __('day avg') }}</span>
                         <span class="font-semibold tabular-nums
                             {{ $isHigher ? 'text-error-500' : '' }}
                             {{ $isLower  ? 'text-success-500' : '' }}
@@ -121,7 +123,7 @@
                 @endif
                 @if ($formatted3xDaysPrice)
                     <div class="flex justify-between items-baseline">
-                        <span class="text-xs text-neutral-500 dark:text-neutral-400">{{ 3 * $days }}-day avg</span>
+                        <span class="text-xs text-neutral-500 dark:text-neutral-400">{{ 3 * $days }}-{{ __('day avg') }}</span>
                         <span class="font-medium tabular-nums text-neutral-600 dark:text-neutral-300">
                             {{ $formatted3xDaysPrice }}
                         </span>
@@ -130,15 +132,15 @@
 
                 @if ($formatted3xDaysPrice && $formattedPrice)
                     <div class="flex justify-between items-center pt-1.5 border-t border-neutral-100 dark:border-white/[0.06]">
-                        <span class="text-xs text-neutral-500 dark:text-neutral-400">Trend</span>
+                        <span class="text-xs text-neutral-500 dark:text-neutral-400">{{ __('Trend') }}</span>
                         <span class="text-xs font-bold
                             {{ $isHigher ? 'text-error-500' : '' }}
                             {{ $isLower  ? 'text-success-500' : '' }}
                             {{ !$isHigher && !$isLower ? 'text-neutral-400' : '' }}
                         ">
-                            @if ($isHigher) ↑ Rising
-                            @elseif ($isLower) ↓ Falling
-                            @else → Stable
+                            @if ($isHigher) {{ __('↑ Rising') }}
+                            @elseif ($isLower) {{ __('↓ Falling') }}
+                            @else {{ __('→ Stable') }}
                             @endif
                         </span>
                     </div>
@@ -153,22 +155,21 @@
                     </div>
                 @endif
             @elseif ($userStatus === 'active_outlier' && $userEstimateFormatted)
-                {{-- Only data is the flagged estimate —show it with context --}}
                 <div class="flex justify-between items-baseline">
                     <span class="text-xs text-warning-600 dark:text-warning-400">{{ __('Your estimate') }}</span>
                     <span class="text-xs font-semibold tabular-nums text-warning-600 dark:text-warning-400 line-through">
                         {{ $userEstimateFormatted }}
                     </span>
                 </div>
-                <p class="text-[11px] text-neutral-400 dark:text-neutral-500 pt-1">
+                <p class="text-xs text-neutral-400 dark:text-neutral-500 pt-1">
                     {{ __('Excluded from avg — outside expected range') }}
                 </p>
             @else
                 <p class="text-xs text-neutral-400 dark:text-neutral-500">
                     {{ $hasCityData ? __('No data for this period') : __('No submissions yet') }}
                 </p>
-                <p class="text-[11px] text-primary-500 dark:text-primary-400 pt-0.5">
-                    {{ __('Tap to submit a price') }}
+                <p class="text-sm font-semibold text-primary-500 dark:text-primary-400 pt-0.5">
+                    {{ $hasCityData ? __('Submit a price →') : __('Be the first to submit!') }}
                 </p>
             @endif
         </div>

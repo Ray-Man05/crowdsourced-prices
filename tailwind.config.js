@@ -23,6 +23,11 @@ export default {
                 error:    colors.red,
                 warning:  colors.amber,
                 neutral:  colors.gray,
+                surface: {
+                    page:   'var(--surface-page)',
+                    card:   'var(--surface-card)',
+                    raised: 'var(--surface-raised)',
+                },
             },
         },
     },

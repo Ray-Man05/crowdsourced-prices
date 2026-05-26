@@ -3,9 +3,33 @@
     {{-- Header --}}
     <div class="px-5 py-4 border-b border-neutral-100 dark:border-white/[0.05] flex flex-wrap items-center justify-between gap-3">
         <div>
-            <h2 class="text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
-                {{ __('Prices by city') }}
-            </h2>
+            <div class="flex items-center gap-2">
+                <h2 class="text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
+                    {{ __('Prices by city') }}
+                </h2>
+                <div x-data="{ tip: false }" class="relative flex items-center shrink-0">
+                    <button @mouseenter="tip = true" @mouseleave="tip = false"
+                            @focus="tip = true" @blur="tip = false"
+                            class="w-4 h-4 rounded-full flex items-center justify-center
+                                   text-neutral-400 dark:text-neutral-500
+                                   hover:text-neutral-600 dark:hover:text-neutral-300 transition"
+                            aria-label="{{ __('Table info') }}">
+                        <svg fill="currentColor" viewBox="0 0 20 20" class="w-3.5 h-3.5">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                    <div x-show="tip" x-cloak
+                         x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="opacity-0 scale-95"
+                         x-transition:enter-end="opacity-100 scale-100"
+                         class="absolute left-5 top-0 z-50 w-56 p-3 text-xs leading-relaxed
+                                bg-white dark:bg-[#1a1e2d] rounded-xl shadow-card-md
+                                border border-neutral-200 dark:border-white/[0.1]
+                                text-neutral-600 dark:text-neutral-300 pointer-events-none">
+                        {{ __('Average price per city based on all valid submissions in the selected period. Click column headers to sort.') }}
+                    </div>
+                </div>
+            </div>
             @if ($cityStats->isNotEmpty())
                 <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                     {{ $cityStats->count() }} {{ __('cities') }}

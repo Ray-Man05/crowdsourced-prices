@@ -100,16 +100,16 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
         {{-- Results summary --}}
-        <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-5 tabular-nums">
-            <span wire:loading.remove class="font-medium text-neutral-700 dark:text-neutral-300">
+        <p class="text-sm text-neutral-600 dark:text-neutral-400 mb-5 tabular-nums">
+            <span wire:loading.remove class="font-semibold text-neutral-800 dark:text-neutral-200">
                 {{ $products->count() }}
             </span>
             <span wire:loading class="opacity-50">·</span>
             {{ __('products') }}
             @if ($city)
-                · <span class="font-medium text-neutral-700 dark:text-neutral-300">{{ $city->name }}</span>
+                · <span class="font-semibold text-neutral-800 dark:text-neutral-200">{{ $city->name }}</span>
             @endif
-            · {{ $days }}-{{ __('day average') }}
+            · <span class="font-medium">{{ $days }}-{{ __('day average') }}</span>
         </p>
 
         {{-- Grid --}}

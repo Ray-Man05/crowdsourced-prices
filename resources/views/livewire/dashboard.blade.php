@@ -1220,10 +1220,10 @@
                                                         {{ $item->product->name }}
                                                     </span>
                                                     <span class="text-sm tabular-nums shrink-0
-                                                                 text-neutral-500 dark:text-neutral-400">
-                                                        ×&thinsp;{{ rtrim(rtrim(number_format((float)$item->quantity, 2), '0'), '.') }}
+                                                                 text-neutral-500 dark:text-neutral-400 flex items-baseline gap-1">
+                                                        <span>×&thinsp;{{ rtrim(rtrim(number_format((float)$item->quantity, 2), '0'), '.') }}</span>
                                                         @if ($item->product->unit)
-                                                            <span class="text-xs text-neutral-400 dark:text-neutral-500">
+                                                            <span class="text-sm font-bold text-neutral-700 dark:text-neutral-200">
                                                                 {{ $item->product->unit->symbol }}
                                                             </span>
                                                         @endif
@@ -1454,7 +1454,7 @@
                                                                   focus:border-primary-500
                                                                   focus:bg-white dark:focus:bg-white/[0.08]"/>
                                                     <span x-show="selectedUnit" x-text="selectedUnit"
-                                                          class="text-xs text-neutral-400 dark:text-neutral-500 min-w-[18px]">
+                                                          class="text-sm font-bold text-neutral-700 dark:text-neutral-200 min-w-[1.5rem] shrink-0">
                                                     </span>
                                                 </div>
                                             </div>

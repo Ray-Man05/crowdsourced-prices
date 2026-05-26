@@ -59,6 +59,24 @@
         );
 }
 
+/* ─── Range slider — visible track in both light and dark mode ─── */
+input[type="range"]::-webkit-slider-runnable-track {
+    background-color: rgb(209 213 219); /* neutral-300 */
+    border-radius: 9999px;
+    height: 100%;
+}
+.dark input[type="range"]::-webkit-slider-runnable-track {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+input[type="range"]::-moz-range-track {
+    background-color: rgb(209 213 219);
+    border-radius: 9999px;
+    height: 6px;
+}
+.dark input[type="range"]::-moz-range-track {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
 /* ─── Mobile / Touch optimizations ─── */
 @media (max-width: 639px) {
     /* Minimum touch target size */

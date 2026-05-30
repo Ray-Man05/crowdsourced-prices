@@ -18,6 +18,9 @@
                     <x-nav-link :href="route('map')" :active="request()->routeIs('map')">
                         {{ __('Map') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('compare')" :active="request()->routeIs('compare')">
+                        {{ __('Compare') }}
+                    </x-nav-link>
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
@@ -90,6 +93,9 @@
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('map')" :active="request()->routeIs('map')">
                 {{ __('Map') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('compare')" :active="request()->routeIs('compare')">
+                {{ __('Compare') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}

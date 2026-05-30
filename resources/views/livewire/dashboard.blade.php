@@ -352,6 +352,36 @@
                                                         </span>
                                                     @endif
                                                 </p>
+                                                <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                                                    @if ($row['estimate']->city)
+                                                        <span title="{{ $row['city_mismatch'] ? __('Differs from your current city') : '' }}"
+                                                              class="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md font-medium
+                                                                     {{ $row['city_mismatch']
+                                                                         ? 'bg-warning-100 dark:bg-warning-900/30 text-warning-700 dark:text-warning-400 ring-1 ring-inset ring-warning-300 dark:ring-warning-700/50'
+                                                                         : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400' }}">
+                                                            @if ($row['city_mismatch'])
+                                                                <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                                                                </svg>
+                                                            @endif
+                                                            {{ $row['estimate']->city->name }}
+                                                        </span>
+                                                    @endif
+                                                    @if ($row['estimate']->currency)
+                                                        <span title="{{ $row['currency_mismatch'] ? __('Differs from your current currency') : '' }}"
+                                                              class="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md font-medium
+                                                                     {{ $row['currency_mismatch']
+                                                                         ? 'bg-warning-100 dark:bg-warning-900/30 text-warning-700 dark:text-warning-400 ring-1 ring-inset ring-warning-300 dark:ring-warning-700/50'
+                                                                         : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400' }}">
+                                                            @if ($row['currency_mismatch'])
+                                                                <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                                                                </svg>
+                                                            @endif
+                                                            {{ $row['estimate']->currency->code }}
+                                                        </span>
+                                                    @endif
+                                                </div>
                                             </td>
 
                                             <td class="px-5 py-3 text-right font-semibold tabular-nums

@@ -35,6 +35,38 @@
                                 ? __('1 day until next submission')
                                 : __(':days days until next submission', ['days' => $daysRemaining]) }}
                         </p>
+                        @if ($estimateCity || $estimateCurrency)
+                            <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                @if ($estimateCity)
+                                    <span title="{{ $cityMismatch ? __('Differs from your current city') : '' }}"
+                                          class="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md font-medium
+                                                 {{ $cityMismatch
+                                                     ? 'bg-warning-100 dark:bg-warning-900/30 text-warning-700 dark:text-warning-400 ring-1 ring-inset ring-warning-300 dark:ring-warning-700/50'
+                                                     : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400' }}">
+                                        @if ($cityMismatch)
+                                            <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                                            </svg>
+                                        @endif
+                                        {{ $estimateCity->name }}
+                                    </span>
+                                @endif
+                                @if ($estimateCurrency)
+                                    <span title="{{ $currencyMismatch ? __('Differs from your current currency') : '' }}"
+                                          class="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md font-medium
+                                                 {{ $currencyMismatch
+                                                     ? 'bg-warning-100 dark:bg-warning-900/30 text-warning-700 dark:text-warning-400 ring-1 ring-inset ring-warning-300 dark:ring-warning-700/50'
+                                                     : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400' }}">
+                                        @if ($currencyMismatch)
+                                            <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                                            </svg>
+                                        @endif
+                                        {{ $estimateCurrency->code }}
+                                    </span>
+                                @endif
+                            </div>
+                        @endif
                     </div>
 
                     <div class="flex items-center gap-3 flex-shrink-0">
@@ -63,11 +95,43 @@
                 <p class="text-sm font-medium text-neutral-800 dark:text-neutral-100 mb-2">
                     {{ __('Update your estimate') }}
                 </p>
+                @if ($estimateCity || $estimateCurrency)
+                    <div class="flex items-center gap-1.5 mb-2 flex-wrap">
+                        @if ($estimateCity)
+                            <span title="{{ $cityMismatch ? __('Differs from your current city') : '' }}"
+                                  class="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md font-medium
+                                         {{ $cityMismatch
+                                             ? 'bg-warning-100 dark:bg-warning-900/30 text-warning-700 dark:text-warning-400 ring-1 ring-inset ring-warning-300 dark:ring-warning-700/50'
+                                             : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400' }}">
+                                @if ($cityMismatch)
+                                    <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                                    </svg>
+                                @endif
+                                {{ $estimateCity->name }}
+                            </span>
+                        @endif
+                        @if ($estimateCurrency)
+                            <span title="{{ $currencyMismatch ? __('Differs from your current currency') : '' }}"
+                                  class="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md font-medium
+                                         {{ $currencyMismatch
+                                             ? 'bg-warning-100 dark:bg-warning-900/30 text-warning-700 dark:text-warning-400 ring-1 ring-inset ring-warning-300 dark:ring-warning-700/50'
+                                             : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400' }}">
+                                @if ($currencyMismatch)
+                                    <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                                    </svg>
+                                @endif
+                                {{ $estimateCurrency->code }}
+                            </span>
+                        @endif
+                    </div>
+                @endif
                 <div class="flex items-center gap-2">
                     <div class="relative flex-1">
                         <span class="absolute inset-y-0 left-3 flex items-center text-sm
                                      text-neutral-500 dark:text-neutral-400 pointer-events-none">
-                            {{ $currency->symbol }}
+                            {{ $estimateCurrency?->symbol ?? $currency->symbol }}
                         </span>
                         <x-text-input
                             wire:model="modifyPrice"

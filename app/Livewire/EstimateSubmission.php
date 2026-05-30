@@ -124,11 +124,25 @@ class EstimateSubmission extends Component
 
     public function render()
     {
+        $estimate = $this->latestEstimate;
+        $user = auth()->user();
+        $effectiveCurrency = $user->effectiveCurrency();
+
+        $estimateCurrency = $estimate && !$estimate->trashed() ? $estimate->currency : null;
+        $estimateCity     = $estimate && !$estimate->trashed() ? $estimate->city     : null;
+        $cityMismatch     = $estimateCity && $estimateCity->id !== $user->city_id;
+        $currencyMismatch = $estimateCurrency && $effectiveCurrency
+            && $estimateCurrency->id !== $effectiveCurrency->id;
+
         return view('livewire.estimate-submission', [
-            'currency'       => auth()->user()->effectiveCurrency(),
-            'latestEstimate' => $this->latestEstimate,
-            'daysRemaining'  => $this->daysRemaining,
-            'isOutlier'      => $this->isOutlier,
+            'currency'         => $effectiveCurrency,
+            'latestEstimate'   => $estimate,
+            'daysRemaining'    => $this->daysRemaining,
+            'isOutlier'        => $this->isOutlier,
+            'estimateCurrency' => $estimateCurrency,
+            'estimateCity'     => $estimateCity,
+            'cityMismatch'     => $cityMismatch,
+            'currencyMismatch' => $currencyMismatch,
         ]);
     }
 }

@@ -58,7 +58,7 @@ class Dashboard extends Component
             ->latest('created_at')
             ->get();
 
-        return $estimates->map(function ($estimate) use ($currency, $aggregator) {
+        return $estimates->map(function ($estimate) use ($currency, $aggregator, $user) {
             $cityAvg = $estimate->city
                 ? $aggregator->cityAverage($estimate->product, $estimate->city, $currency, 30)
                 : null;
@@ -84,14 +84,16 @@ class Dashboard extends Component
                 ->addDays(PriceEstimate::ESTIMATE_COOLDOWN_DAYS);
 
             return [
-                'estimate'        => $estimate,
-                'converted_price' => $convertedPrice,
-                'city_average'    => $cityAvg,
-                'deviation'       => $deviation,
-                'position'        => $position,
-                'is_outlier'      => $isOutlier,
-                'cooldown_ends'   => $cooldownEndsAt,
-                'symbol'          => $currency->symbol,
+                'estimate'         => $estimate,
+                'converted_price'  => $convertedPrice,
+                'city_average'     => $cityAvg,
+                'deviation'        => $deviation,
+                'position'         => $position,
+                'is_outlier'       => $isOutlier,
+                'cooldown_ends'    => $cooldownEndsAt,
+                'symbol'           => $currency->symbol,
+                'city_mismatch'    => $estimate->city_id !== $user->city_id,
+                'currency_mismatch' => $currency !== null && $estimate->currency_id !== $currency->id,
             ];
         });
     }

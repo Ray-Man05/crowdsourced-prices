@@ -34,8 +34,9 @@ class Dashboard extends Component
     {
         $user = auth()->user();
         if ($user->city_id) {
+            // All estimates have valid product_id FK values, so the previous whereIn(Product::pluck('id'))
+            // added no selectivity — it just ran a full Product::pluck('id') query for nothing.
             $this->comparisonProductId = PriceEstimate::where('city_id', $user->city_id)
-                ->whereIn('product_id', Product::pluck('id'))
                 ->value('product_id');
         }
 
@@ -48,9 +49,8 @@ class Dashboard extends Component
 
     public function getRecentEstimatesProperty(): Collection
     {
-        $user       = auth()->user();
-        $currency   = $user->effectiveCurrency();
-        $aggregator = app(PriceAggregator::class);
+        $user     = auth()->user();
+        $currency = $user->effectiveCurrency();
 
         $estimates = PriceEstimate::where('user_id', $user->id)
             ->where('created_at', '>=', Carbon::now()->subDays(PriceEstimate::ESTIMATE_COOLDOWN_DAYS))
@@ -58,14 +58,28 @@ class Dashboard extends Component
             ->latest('created_at')
             ->get();
 
+        if ($estimates->isEmpty() || !$currency) return collect();
+
+        $aggregator = app(PriceAggregator::class);
+
         return $estimates->map(function ($estimate) use ($currency, $aggregator, $user) {
+            $convertedPrice = $estimate->currency->convert($estimate->price, $currency);
+
+            // cityAverage() is application-cached (1 h, version-stamped), so this is a
+            // cache read on every tab-switch after the first cold load — no DB query.
             $cityAvg = $estimate->city
                 ? $aggregator->cityAverage($estimate->product, $estimate->city, $currency, 30)
                 : null;
 
-            $convertedPrice = $estimate->currency->convert($estimate->price, $currency);
+            // Simple median-ratio fence: same approach as dualCityMetrics(). Using the
+            // cached cityAvg means no extra data loading is needed here.
+            $isOutlier = $estimate->city
+                && $cityAvg !== null
+                && $convertedPrice !== null
+                && $cityAvg > 0
+                && ($convertedPrice < $cityAvg / 5 || $convertedPrice > $cityAvg * 5);
 
-            $position = null;
+            $position  = null;
             $deviation = null;
             if ($cityAvg !== null && $convertedPrice !== null && $cityAvg > 0) {
                 $deviation = (($convertedPrice - $cityAvg) / $cityAvg) * 100;
@@ -76,24 +90,20 @@ class Dashboard extends Component
                 };
             }
 
-            $isOutlier = $estimate->city
-                ? $aggregator->isEstimateOutlier($estimate, $currency)
-                : false;
-
             $cooldownEndsAt = Carbon::parse($estimate->created_at)
                 ->addDays(PriceEstimate::ESTIMATE_COOLDOWN_DAYS);
 
             return [
-                'estimate'         => $estimate,
-                'converted_price'  => $convertedPrice,
-                'city_average'     => $cityAvg,
-                'deviation'        => $deviation,
-                'position'         => $position,
-                'is_outlier'       => $isOutlier,
-                'cooldown_ends'    => $cooldownEndsAt,
-                'symbol'           => $currency->symbol,
-                'city_mismatch'    => $estimate->city_id !== $user->city_id,
-                'currency_mismatch' => $currency !== null && $estimate->currency_id !== $currency->id,
+                'estimate'          => $estimate,
+                'converted_price'   => $convertedPrice,
+                'city_average'      => $cityAvg,
+                'deviation'         => $deviation,
+                'position'          => $position,
+                'is_outlier'        => $isOutlier,
+                'cooldown_ends'     => $cooldownEndsAt,
+                'symbol'            => $currency->symbol,
+                'city_mismatch'     => $estimate->city_id !== $user->city_id,
+                'currency_mismatch' => $estimate->currency_id !== $currency->id,
             ];
         });
     }
@@ -278,10 +288,9 @@ class Dashboard extends Component
         $user = auth()->user();
         if (!$user->city_id) return null;
 
-        $basket = UserBasket::where('id', $this->selectedBasketId)
-            ->where('user_id', $user->id)
-            ->with(['items.product.unit', 'items.product.category'])
-            ->first();
+        // getBasketsProperty() already loaded all baskets with the same eager-load chain.
+        // Re-using that result avoids a redundant DB query + full relation hydration.
+        $basket = $this->baskets->firstWhere('id', $this->selectedBasketId);
 
         if (!$basket || $basket->items->isEmpty()) return null;
 
@@ -289,12 +298,16 @@ class Dashboard extends Component
         $aggregator = app(PriceAggregator::class);
         $days       = (int) $this->pricePeriod;
 
+        // Single bulk call (version-cached) instead of N individual cityAverage() calls.
+        $products = $basket->items->map(fn($i) => $i->product)->filter();
+        $metrics  = $aggregator->bulkCityMetrics($products, $user->city, $currency, $days);
+
         $total     = 0.0;
         $breakdown = [];
         $missing   = [];
 
         foreach ($basket->items as $item) {
-            $avg = $aggregator->cityAverage($item->product, $user->city, $currency, $days);
+            $avg = $metrics[$item->product_id]['average'] ?? null;
 
             if ($avg === null) {
                 $missing[] = $item;
@@ -357,7 +370,14 @@ class Dashboard extends Component
         $user        = auth()->user();
         $isEstimates = $this->activeSection === 'estimates';
         $isBaskets   = $this->activeSection === 'baskets';
-        $categories  = Category::withSortedProducts();
+
+        // Categories are pushed to window.__dashCategories via @push('scripts') on the
+        // initial full-page load. Livewire AJAX responses do NOT include @push content,
+        // so Alpine on the client reads from the already-set window global on re-renders.
+        // Sending an empty collection on AJAX skips the query + large JSON serialization
+        // on every tab switch — the same pattern used by CityComparison.
+        $isAjax     = request()->header('X-Livewire') !== null;
+        $categories = $isAjax ? collect() : Category::withSortedProducts();
 
         return view('livewire.dashboard', [
             'user'            => $user,

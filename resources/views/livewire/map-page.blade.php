@@ -21,9 +21,13 @@
     },
     init() {
         const saved = localStorage.getItem('map-recompute-on-change');
-        if (saved !== null) {
-            $wire.set('recomputeOnChange', saved === 'true');
-        }
+        if (saved !== null) $wire.set('recomputeOnChange', saved === 'true');
+        const cs   = localStorage.getItem('map-color-scale');
+        const cmin = localStorage.getItem('map-color-min');
+        const cmax = localStorage.getItem('map-color-max');
+        if (cs)   $wire.set('colorScale', cs);
+        if (cmin) $wire.set('colorMin', cmin);
+        if (cmax) $wire.set('colorMax', cmax);
     }
 }"
      @keydown.window="if ($event.key === '[' && !$event.ctrlKey && !$event.metaKey && !['INPUT','TEXTAREA','SELECT'].includes($event.target.tagName)) { sidebarOpen = !sidebarOpen; setTimeout(() => window.dispatchEvent(new CustomEvent('sidebar-toggled')), 310); }"
@@ -99,10 +103,10 @@
                         </svg>
                     </div>
                     <div>
-                        <p class="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                        <p class="text-md font-semibold text-neutral-900 dark:text-neutral-100">
                             {{ __('Price mode') }}
                         </p>
-                        <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
+                        <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
                             {{ __('Build a basket of products with quantities, then click "Compute prices" to see the combined basket cost for each city on the map.') }}
                         </p>
                     </div>
@@ -119,17 +123,17 @@
                         </svg>
                     </div>
                     <div>
-                        <p class="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                        <p class="text-md font-semibold text-neutral-900 dark:text-neutral-100">
                             {{ __('Coverage mode') }}
                         </p>
-                        <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
+                        <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
                             {{ __('Visualize data density and see how many price submissions or distinct products each city has. Useful for spotting where data is sparse.') }}
                         </p>
                     </div>
                 </div>
 
                 <div class="border-t border-neutral-200 dark:border-white/[0.06] pt-4 space-y-2">
-                    <p class="text-[10px] font-bold uppercase tracking-widest
+                    <p class="text-sm font-bold uppercase tracking-widest
                                text-neutral-400 dark:text-neutral-500 mb-2">
                         {{ __('Tips') }}
                     </p>
@@ -358,8 +362,8 @@
                            class="text-primary-600 border-neutral-300 dark:border-white/[0.1]
                                   bg-neutral-50 dark:bg-white/[0.04] focus:ring-primary-500/30"/>
                     <div class="min-w-0">
-                        <p class="text-xs font-semibold text-neutral-800 dark:text-neutral-100">{{ __('Submissions') }}</p>
-                        <p class="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
+                        <p class="text-md font-semibold text-neutral-800 dark:text-neutral-100">{{ __('Submissions') }}</p>
+                        <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
                             {{ __('Total price estimates submitted per city') }}
                         </p>
                     </div>
@@ -372,8 +376,8 @@
                            class="text-primary-600 border-neutral-300 dark:border-white/[0.1]
                                   bg-neutral-50 dark:bg-white/[0.04] focus:ring-primary-500/30"/>
                     <div class="min-w-0">
-                        <p class="text-xs font-semibold text-neutral-800 dark:text-neutral-100">{{ __('Products with data') }}</p>
-                        <p class="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
+                        <p class="text-md font-semibold text-neutral-800 dark:text-neutral-100">{{ __('Products with data') }}</p>
+                        <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
                             {{ __('Distinct products with at least one estimate') }}
                         </p>
                     </div>
@@ -394,11 +398,11 @@
                                 transition group"
                          style="border-color: {{ $item['category_color'] }}">
                         <div class="flex-1 min-w-0">
-                            <p class="font-medium text-neutral-800 dark:text-neutral-100 truncate text-xs leading-snug">
+                            <p class="font-medium text-neutral-800 dark:text-neutral-100 truncate text-sm leading-snug">
                                 {{ $item['name'] }}
                             </p>
                             <p class="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 flex items-baseline gap-1">
-                                <span>× {{ $item['quantity'] }}</span>
+                                <span class="text-sm font-bold text-neutral-700 dark:text-neutral-200">× {{ $item['quantity'] }}</span>
                                 @if ($item['unit'])
                                     <span class="text-sm font-bold text-neutral-700 dark:text-neutral-200">{{ $item['unit'] }}</span>
                                 @endif
@@ -435,7 +439,8 @@
 
                 @if (!empty($basket) && empty($results))
                     <div class="rounded-lg border border-dashed border-neutral-300 dark:border-white/[0.1]
-                                bg-neutral-50 dark:bg-white/[0.02] px-3 py-2.5 text-[11px]
+                                bg-neutral-50 dark:bg-white/[0.02] px-3 py-2.5 
+                                {{-- text-[11px] --}} text-sm
                                 text-neutral-500 dark:text-neutral-400 flex items-start gap-2 mt-2">
                         <svg class="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -453,7 +458,8 @@
                             <svg class="h-5 w-5 text-neutral-400 dark:text-neutral-500"
                                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                      d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/>
+                                      {{-- d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/> --}}
+                                      d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"/>
                             </svg>
                         </div>
                         <p class="text-xs font-medium text-neutral-600 dark:text-neutral-400">
@@ -704,7 +710,13 @@
 
         {{-- Display widget --}}
         <div
-            x-data="{ open: false, opacity: 0.85, stroke: 2, scale: 10 }"
+            x-data="{
+            open: false,
+            opacity:   parseFloat(localStorage.getItem('map-opacity')    || '0.85'),
+            stroke:    parseFloat(localStorage.getItem('map-stroke')     || '2'),
+            scale:     parseFloat(localStorage.getItem('map-scale')      || '10'),
+            tileStyle: localStorage.getItem('map-tile-style') || 'carto_dark',
+        }"
             class="relative"
         >
             {{-- Expandable panel (opens upward) --}}
@@ -766,6 +778,7 @@
                     </p>
                     <select
                         wire:model.live="colorScale"
+                        @change="localStorage.setItem('map-color-scale', $event.target.value)"
                         class="w-full text-sm rounded-lg
                                border border-neutral-300 dark:border-white/[0.12]
                                bg-neutral-50 dark:bg-[#222638]
@@ -782,11 +795,13 @@
                             <div>
                                 <p class="text-xs text-neutral-600 dark:text-neutral-400 mb-1">{{ __('Min') }}</p>
                                 <input type="color" wire:model.live="colorMin"
+                                       @change="localStorage.setItem('map-color-min', $event.target.value)"
                                        class="h-8 w-full rounded-lg cursor-pointer border border-neutral-300 dark:border-white/[0.1]"/>
                             </div>
                             <div>
                                 <p class="text-xs text-neutral-600 dark:text-neutral-400 mb-1">{{ __('Max') }}</p>
                                 <input type="color" wire:model.live="colorMax"
+                                       @change="localStorage.setItem('map-color-max', $event.target.value)"
                                        class="h-8 w-full rounded-lg cursor-pointer border border-neutral-300 dark:border-white/[0.1]"/>
                             </div>
                         </div>
@@ -796,6 +811,24 @@
                     <div class="w-full h-2 rounded-full"
                          style="background: linear-gradient(to right, {{ $colorMin }}, {{ $colorMax }})">
                     </div>
+                </div>
+
+                {{-- Map style --}}
+                <div class="space-y-2 border-t border-neutral-200 dark:border-white/[0.08] pt-3">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-neutral-500 dark:text-neutral-400">
+                        {{ __('Map Style') }}
+                    </p>
+                    <select x-model="tileStyle"
+                            @change="localStorage.setItem('map-tile-style', tileStyle); $dispatch('tile-style-changed', { style: tileStyle })"
+                            class="w-full text-sm rounded-lg border border-neutral-300 dark:border-white/[0.12]
+                                   bg-neutral-50 dark:bg-[#222638] text-neutral-900 dark:text-neutral-100
+                                   focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 transition">
+                        <option value="carto_dark">{{ __('Dark') }}</option>
+                        <option value="carto_light">{{ __('Light') }}</option>
+                        <option value="carto_dark_nolabels">{{ __('Dark (clean)') }}</option>
+                        <option value="carto_light_nolabels">{{ __('Light (clean)') }}</option>
+                        <option value="osm">{{ __('OpenStreetMap') }}</option>
+                    </select>
                 </div>
             </div>
 
@@ -830,15 +863,25 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function () {
-    const map = L.map('map').setView([20, 10], 2);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 18,
-    }).addTo(map);
+    const TILES = {
+        carto_dark:           ['https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',           '© <a href="https://carto.com">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OSM</a>'],
+        carto_light:          ['https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',          '© <a href="https://carto.com">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OSM</a>'],
+        carto_dark_nolabels:  ['https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',      '© <a href="https://carto.com">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OSM</a>'],
+        carto_light_nolabels: ['https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',     '© <a href="https://carto.com">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OSM</a>'],
+        osm:                  ['https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                      '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'],
+    };
+
+    const initStyle = localStorage.getItem('map-tile-style') || 'carto_dark';
+    const map = L.map('map', { preferCanvas: true }).setView([20, 10], 2);
+    let tileLayer = L.tileLayer(TILES[initStyle][0], { attribution: TILES[initStyle][1], maxZoom: 18 }).addTo(map);
 
     let markers         = [];
     let currentResults  = [];
-    let currentStyle    = { opacity: 0.85, stroke: 2, scale: 10 };
+    let currentStyle    = {
+        opacity: parseFloat(localStorage.getItem('map-opacity') || '0.85'),
+        stroke:  parseFloat(localStorage.getItem('map-stroke')  || '2'),
+        scale:   parseFloat(localStorage.getItem('map-scale')   || '10'),
+    };
     let currentColorMin = '#22c55e';
     let currentColorMax = '#ef4444';
 
@@ -891,9 +934,19 @@
 
     window.addEventListener('marker-style-changed', e => {
         currentStyle = e.detail;
+        localStorage.setItem('map-opacity', e.detail.opacity);
+        localStorage.setItem('map-stroke',  e.detail.stroke);
+        localStorage.setItem('map-scale',   e.detail.scale);
         if (currentResults.length > 0) {
             drawMarkers(currentResults, currentStyle, currentColorMin, currentColorMax);
         }
+    });
+
+    window.addEventListener('tile-style-changed', e => {
+        const key = e.detail.style;
+        if (!TILES[key]) return;
+        map.removeLayer(tileLayer);
+        tileLayer = L.tileLayer(TILES[key][0], { attribution: TILES[key][1], maxZoom: 18 }).addTo(map);
     });
 
     window.addEventListener('sidebar-toggled', () => {

@@ -1,3 +1,16 @@
+{{--
+    Category + product data is pushed to window.__dashCategories ONCE on the initial page
+    load. Livewire AJAX responses do NOT include @push content, so Alpine on the client
+    reads from the already-set window global on every subsequent render without receiving
+    or serializing the large JSON again. Both Alpine components below read from
+    window.__dashCategories ?? [] instead of an inline Js::from($categories).
+--}}
+@push('scripts')
+<script>
+    window.__dashCategories = @json($categories);
+</script>
+@endpush
+
 <div class="relative min-h-screen">
 
     @if ($user->city)
@@ -228,7 +241,7 @@
                                 {{ $stat['value'] }}
                             </p>
                             <p class="text-xs mt-1 tracking-widest uppercase
-                                       text-neutral-500 dark:text-neutral-500">
+                                       text-neutral-600 dark:text-neutral-200">
                                 {{ $stat['label'] }}
                             </p>
                             @if ($stat['sub'])
@@ -483,7 +496,7 @@
                                 search: {{ Js::from($comparison ? $comparison['product']->name : '') }},
                                 activeIndex: -1,
                                 locale: document.documentElement.lang ?? 'en',
-                                categories: {{ Js::from($categories) }},
+                                categories: window.__dashCategories ?? [],
                                 getName(obj) {
                                     if (!obj) return '';
                                     if (typeof obj === 'string') return obj;
@@ -747,7 +760,7 @@
                             {{ __('My Baskets') }}
                         </h2>
                         <p class="text-xs mt-0.5 text-neutral-500 dark:text-neutral-400">
-                            {{ __('Track product bundles and compare prices across cities') }}
+                            {{ __('Track product bundles and compare prices over time') }}
                         </p>
                     </div>
                     @if (!$showBasketForm)
@@ -856,7 +869,7 @@
                                                        text-neutral-900 dark:text-white">
                                                 {{ $basketPrice['symbol'] }}{{ number_format($basketPrice['total'], 2) }}
                                             </p>
-                                            <p class="text-xs mt-0.5 text-neutral-500 dark:text-neutral-400">
+                                            <p class="text-sm mt-0.5 text-neutral-500 dark:text-neutral-400">
                                                 {{ __('Total basket price in :city', ['city' => $basketPrice['city']->name]) }}
                                             </p>
                                         @else
@@ -867,8 +880,8 @@
                                                     {{ __('partial') }}
                                                 </span>
                                             </p>
-                                            <p class="text-xs mt-0.5 text-warning-600 dark:text-warning-400">
-                                                {{ __('Incomplete recording — missing data for :n product(s)', ['n' => count($basketPrice['missing'])]) }}
+                                            <p class="text-sm mt-0.5 text-warning-600 dark:text-warning-400">
+                                                {{ __('Incomplete recording: missing data for :n product(s)', ['n' => count($basketPrice['missing'])]) }}
                                             </p>
                                         @endif
                                     </div>
@@ -877,19 +890,19 @@
                                 @if (!empty($basketPrice['breakdown']))
                                     <ul class="divide-y divide-black/[0.04] dark:divide-white/[0.04]">
                                         @foreach ($basketPrice['breakdown'] as $row)
-                                            <li class="px-5 py-3 flex items-center gap-3 text-sm">
+                                            <li class="px-5 py-3 flex items-center gap-3 text-md">
                                                 <span class="w-2 h-2 rounded-full shrink-0"
                                                       style="background-color: {{ $row['category_color'] }}"></span>
                                                 <span class="flex-1 text-neutral-800 dark:text-neutral-100 truncate">
                                                     {{ $row['name'] }}
                                                 </span>
-                                                <span class="text-xs text-neutral-400 dark:text-neutral-500 shrink-0 tabular-nums">
+                                                <span class="text-sm text-neutral-400 dark:text-neutral-400 shrink-0 tabular-nums">
                                                     ×&thinsp;{{ rtrim(rtrim(number_format($row['quantity'], 2), '0'), '.') }}
                                                     @if ($row['unit']){{ $row['unit'] }}@endif
                                                     &nbsp;·&nbsp;
                                                     {{ $basketPrice['symbol'] }}{{ number_format($row['avg'], 2) }}/{{ $row['unit'] ?: __('unit') }}
                                                 </span>
-                                                <span class="text-sm font-semibold tabular-nums shrink-0
+                                                <span class="text-md font-semibold tabular-nums shrink-0
                                                              text-neutral-700 dark:text-neutral-200">
                                                     {{ $basketPrice['symbol'] }}{{ number_format($row['subtotal'], 2) }}
                                                 </span>
@@ -901,7 +914,7 @@
                                 @if (!empty($basketPrice['missing']))
                                     <div class="px-5 py-4 border-t border-black/[0.06] dark:border-white/[0.06]
                                                 bg-warning-50/60 dark:bg-warning-900/10 rounded-b-2xl">
-                                        <p class="text-xs font-semibold text-warning-700 dark:text-warning-400 mb-2 flex items-center gap-1.5">
+                                        <p class="text-sm font-semibold text-warning-700 dark:text-warning-400 mb-2 flex items-center gap-1.5">
                                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                       d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
@@ -910,7 +923,7 @@
                                         </p>
                                         <ul class="space-y-1">
                                             @foreach ($basketPrice['missing'] as $item)
-                                                <li class="flex items-center gap-2 text-xs text-warning-600 dark:text-warning-400">
+                                                <li class="flex items-center gap-2 text-sm text-warning-600 dark:text-warning-400">
                                                     <span class="w-1.5 h-1.5 rounded-full shrink-0"
                                                           style="background-color: {{ $item->product->category?->color ?? '#9ca3af' }}"></span>
                                                     {{ $item->product->name }}
@@ -1236,7 +1249,7 @@
                                     @if ($basket->items->isEmpty())
                                         <div class="px-5 py-6 text-center">
                                             <p class="text-sm text-neutral-400 dark:text-neutral-500">
-                                                {{ __('No items yet — add some below.') }}
+                                                {{ __('No items yet, add some below.') }}
                                             </p>
                                         </div>
                                     @else
@@ -1290,7 +1303,7 @@
                                              selectedId: null,
                                              cityProductIds: {{ Js::from($cityProductIds) }},
                                              basketProductIds: {{ Js::from($basket->items->pluck('product_id')->all()) }},
-                                             categories: {{ Js::from($categories) }},
+                                             categories: window.__dashCategories ?? [],
                                              locale: document.documentElement.lang ?? 'en',
                                              getName(obj) {
                                                  if (!obj) return '';

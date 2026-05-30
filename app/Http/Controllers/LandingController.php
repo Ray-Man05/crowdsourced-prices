@@ -5,27 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\PriceEstimate;
+use App\Services\PriceAggregator;
 
 class LandingController extends Controller
 {
-    // Leave empty to show all cities with estimates on the hero map.
-    // Populate with specific City IDs to feature only flagship cities.
-    private const FEATURED_CITY_IDS = [];
-
-    public function show()
+    public function show(PriceAggregator $aggregator)
     {
-        $query = City::whereHas('priceEstimates');
-
-        if (!empty(self::FEATURED_CITY_IDS)) {
-            $query->whereIn('id', self::FEATURED_CITY_IDS);
-        }
-
-        $cities = $query->get(['id', 'name', 'lat', 'lng']);
+        $cities = $aggregator->coverageByCity(0);
 
         $stats = [
-            'cities'    => City::whereHas('priceEstimates')->count(),
+            'cities'    => $cities->count(),
             'estimates' => PriceEstimate::count(),
-            'countries' => Country::whereHas('cities.priceEstimates')->count(),
+            'countries' => $cities->pluck('country')->unique()->count(),
         ];
 
         return view('landing', compact('cities', 'stats'));

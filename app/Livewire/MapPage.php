@@ -5,10 +5,9 @@ namespace App\Livewire;
 use App\Livewire\Concerns\HasBasket;
 use App\Models\Category;
 use App\Models\City;
-use App\Models\PriceEstimate;
 use App\Models\Product;
 use App\Models\UserBasket;
-use Illuminate\Support\Carbon;
+use App\Services\PriceAggregator;
 use Livewire\Component;
 
 class MapPage extends Component
@@ -249,15 +248,7 @@ class MapPage extends Component
 
     private function computeCoverageByEstimates(): void
     {
-        $cutoff = $this->days > 0 ? Carbon::now()->subDays($this->days) : null;
-
-        $rows = PriceEstimate::query()
-            ->join('cities',    'cities.id',    '=', 'price_estimates.city_id')
-            ->join('countries', 'countries.id', '=', 'cities.country_id')
-            ->when($cutoff, fn($q) => $q->where('price_estimates.recorded_at', '>=', $cutoff))
-            ->groupBy('price_estimates.city_id', 'cities.name', 'cities.lat', 'cities.lng', 'countries.name')
-            ->selectRaw('price_estimates.city_id, cities.name AS city_name, cities.lat, cities.lng, countries.name AS country_name, COUNT(*) AS value')
-            ->get();
+        $rows = app(\App\Services\PriceAggregator::class)->coverageByCity($this->days);
 
         if ($rows->isEmpty()) {
             $this->error = __('No data for this period');
@@ -265,13 +256,13 @@ class MapPage extends Component
         }
 
         $results = $rows->map(fn($row) => [
-            'city_id'    => $row->city_id,
-            'city_name'  => $row->city_name,
-            'country'    => $row->country_name,
-            'lat'        => (float) $row->lat,
-            'lng'        => (float) $row->lng,
-            'value'      => (int) $row->value,
-            'popup_html' => $this->buildCoveragePopup($row->city_name, $row->country_name, (int) $row->value, 'estimates'),
+            'city_id'    => $row['city_id'],
+            'city_name'  => $row['city_name'],
+            'country'    => $row['country'],
+            'lat'        => $row['lat'],
+            'lng'        => $row['lng'],
+            'value'      => $row['count'],
+            'popup_html' => $this->buildCoveragePopup($row['city_name'], $row['country'], $row['count'], 'estimates'),
         ])->values()->all();
 
         $this->results = $results;
@@ -285,7 +276,8 @@ class MapPage extends Component
     private function computeCoverageByProducts(): void
     {
         $currency = auth()->user()->effectiveCurrency();
-        $stats    = app(\App\Services\PriceAggregator::class)->bulkCoverageByProduct($currency, $this->days);
+        $products = Product::all();
+        $stats    = app(PriceAggregator::class)->bulkCoverageByProduct($currency, $products, $this->days);
 
         if (empty($stats['city_product_counts'])) {
             $this->error = __('No data for this period');

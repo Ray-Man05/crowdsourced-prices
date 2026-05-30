@@ -68,8 +68,11 @@ class PriceAggregator
         Currency $currency,
         int      $days = 30,
     ): ?float {
-        $tagged = $this->taggedEstimates($product, $currency, $days, cityId: $city->id);
-        return $this->averageOfClean($tagged);
+        $key = $this->cacheKey('cityAverage', $product->id, $currency->id, $days, $city->id);
+        return Cache::remember($key, 3600, function () use ($product, $city, $currency, $days) {
+            $tagged = $this->taggedEstimates($product, $currency, $days, cityId: $city->id);
+            return $this->averageOfClean($tagged);
+        });
     }
 
     /**
@@ -103,6 +106,123 @@ class PriceAggregator
         return Cache::remember($key, 3600, function () use ($product, $currency, $days) {
             $tagged = $this->taggedEstimates($product, $currency, $days);
             return $this->meanOfCityAverages($tagged);
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // Public API — dual-city comparison (fast, focused query)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Average prices for all products in exactly two cities.
+     *
+     * Loads estimates ONLY for the two target cities — a small fraction of the
+     * full table (e.g., ~500 rows instead of 222K). The cache key is normalised
+     * so swapping City A and City B is always a cache HIT.
+     *
+     * Outlier removal: simple median-ratio fence (prices outside [median/5,
+     * median×5] are dropped). Fast and good enough for side-by-side display.
+     *
+     * @return array<int, array<int, float>>  [cityId => [productId => average]]
+     */
+    public function dualCityMetrics(
+        City       $cityA,
+        City       $cityB,
+        Collection $products,
+        Currency   $currency,
+        int        $days = 30,
+    ): array {
+        if ($products->isEmpty()) return [];
+
+        $productIds = $products->pluck('id')->sort()->values();
+
+        // Normalise order so A↔B swap is a cache hit.
+        $normA = min($cityA->id, $cityB->id);
+        $normB = max($cityA->id, $cityB->id);
+
+        $versionMap  = Cache::many($productIds->map(fn($id) => "agg_v:{$id}")->all());
+        $versionHash = md5(implode(',', array_values($versionMap)));
+        $cacheKey    = "agg:dual:{$normA}:{$normB}:{$currency->id}:{$days}:{$versionHash}";
+
+        return Cache::remember($cacheKey, 3600, function () use ($productIds, $cityA, $cityB, $currency, $days) {
+            $cutoff = $days > 0 ? Carbon::now()->subDays($days) : null;
+
+            // ONE focused query — only the two cities, not the full 222K table.
+            $estimates = PriceEstimate::whereIn('product_id', $productIds->all())
+                ->whereIn('city_id', [$cityA->id, $cityB->id])
+                ->select('price', 'currency_id', 'city_id', 'product_id', 'recorded_at')
+                ->get();
+
+            if ($estimates->isEmpty()) return [];
+
+            $rateMap = $this->buildRateMap($estimates, $currency);
+
+            $estimates->each(function ($e) use ($rateMap) {
+                $e->converted = isset($rateMap[$e->currency_id])
+                    ? (float) $e->price * $rateMap[$e->currency_id]
+                    : null;
+            });
+
+            $windowed = $cutoff
+                ? $estimates->filter(fn($e) => $e->recorded_at >= $cutoff)
+                : $estimates;
+
+            $result = [];
+            foreach ($windowed->groupBy('product_id') as $productId => $byProduct) {
+                foreach ($byProduct->groupBy('city_id') as $cityId => $group) {
+                    $prices = $group->pluck('converted')->filter()->sort()->values();
+                    if ($prices->isEmpty()) continue;
+
+                    // Simple median-ratio fence: exclude [price < median/5 or > median*5].
+                    $mid    = (int) floor($prices->count() / 2);
+                    $median = $prices->count() % 2 === 0
+                        ? ($prices[$mid - 1] + $prices[$mid]) / 2.0
+                        : (float) $prices[$mid];
+
+                    $clean = $median > 0
+                        ? $prices->filter(fn($p) => $p >= $median / 5 && $p <= $median * 5)
+                        : $prices;
+
+                    if ($clean->isNotEmpty()) {
+                        $result[$cityId][$productId] = round($clean->average(), 2);
+                    }
+                }
+            }
+
+            return $result;
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // Public API — coverage data (no currency, no outlier detection)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Fast single-query city coverage: how many estimates exist per city.
+     * $days = 0 means all-time. Used by the landing page and MapPage coverage mode.
+     *
+     * @return Collection<array{city_id: int, city_name: string, country: string, lat: float, lng: float, count: int}>
+     */
+    public function coverageByCity(int $days = 0): Collection
+    {
+        return Cache::remember("agg:coverageByCity:{$days}", 3600, function () use ($days) {
+            $cutoff = $days > 0 ? Carbon::now()->subDays($days) : null;
+
+            return PriceEstimate::query()
+                ->join('cities',    'cities.id',    '=', 'price_estimates.city_id')
+                ->join('countries', 'countries.id', '=', 'cities.country_id')
+                ->when($cutoff, fn($q) => $q->where('price_estimates.recorded_at', '>=', $cutoff))
+                ->groupBy('price_estimates.city_id', 'cities.name', 'cities.lat', 'cities.lng', 'countries.name')
+                ->selectRaw('price_estimates.city_id, cities.name AS city_name, cities.lat, cities.lng, countries.name AS country_name, COUNT(*) AS count')
+                ->get()
+                ->map(fn($row) => [
+                    'city_id'   => (int)   $row->city_id,
+                    'city_name' => (string) $row->city_name,
+                    'country'   => (string) $row->country_name,
+                    'lat'       => (float)  $row->lat,
+                    'lng'       => (float)  $row->lng,
+                    'count'     => (int)    $row->count,
+                ]);
         });
     }
 
@@ -289,13 +409,7 @@ class PriceAggregator
                 ->select('id', 'price', 'currency_id', 'city_id', 'product_id', 'recorded_at')
                 ->get();
 
-            // Pre-load exchange rates in one query — no per-estimate convert() calls.
-            $uniqueCurrencyIds = $allEstimates->pluck('currency_id')->unique()->all();
-            $rateMap           = ExchangeRate::whereIn('from_currency_id', $uniqueCurrencyIds)
-                ->where('to_currency_id', $currency->id)
-                ->pluck('rate', 'from_currency_id')
-                ->put($currency->id, 1.0)
-                ->all();
+            $rateMap = $this->buildRateMap($allEstimates, $currency);
 
             $convertedById = $allEstimates->mapWithKeys(fn($e) => [
                 $e->id => isset($rateMap[$e->currency_id])
@@ -416,10 +530,14 @@ class PriceAggregator
         $active = $userEstimates->filter(fn($e) => !$e->deleted_at);
         if ($active->isEmpty()) return $result;
 
-        // Delegate outlier detection to isEstimateOutlier, which uses the full
-        // city → country → global bounds fallback — same logic as the detail page.
+        // Bulk outlier detection: replaces per-estimate isEstimateOutlier() calls.
+        // isEstimateOutlier() triggered a lazy-load of $estimate->product (N+1) and then
+        // called taggedEstimates() per estimate (up to 3 DB queries each). bulkEstimateStats()
+        // handles the same logic for all active estimates in 3 total DB queries.
+        $outlierStats = $this->bulkEstimateStats($active->values(), $currency);
+
         foreach ($active as $productId => $userEstimate) {
-            if ($this->isEstimateOutlier($userEstimate, $currency)) {
+            if ($outlierStats[$userEstimate->id]['is_outlier'] ?? false) {
                 $result[$productId]['status'] = 'active_outlier';
             }
         }
@@ -448,56 +566,85 @@ class PriceAggregator
             return [];
         }
 
-        $allEstimates = PriceEstimate::whereIn('product_id', $products->pluck('id')->all())
-            ->with(['currency', 'city.country'])
-            ->get();
+        $sortedIds = $products->pluck('id')->sort()->values();
 
-        if ($allEstimates->isEmpty()) {
-            return [];
-        }
+        // Versioned cache: invalidated whenever any product's estimates change.
+        $versionMap  = Cache::many($sortedIds->map(fn($id) => "agg_v:{$id}")->all());
+        $versionHash = md5(implode(',', array_values($versionMap)));
+        $cacheKey    = "agg:bulkMultiCity:{$currency->id}:{$days}:{$versionHash}";
 
-        $convertedById = $allEstimates->mapWithKeys(
-            fn($e) => [$e->id => $e->currency->convert($e->price, $currency)]
-        );
+        return Cache::remember($cacheKey, 3600, function () use ($sortedIds, $currency, $days) {
+            // Minimal select + no with() — rate map and city→country map handle conversion
+            // and bounds fallback without hydrating full Currency/City/Country models.
+            $allEstimates = PriceEstimate::whereIn('product_id', $sortedIds->all())
+                ->select('id', 'price', 'currency_id', 'city_id', 'product_id', 'recorded_at')
+                ->get();
 
-        $cutoff    = $days > 0 ? Carbon::now()->subDays($days) : null;
-        $byProduct = $allEstimates->groupBy('product_id');
-        $result    = [];
-
-        foreach ($products as $product) {
-            $group = $byProduct->get($product->id, collect());
-
-            if ($group->isEmpty()) {
-                continue;
+            if ($allEstimates->isEmpty()) {
+                return [];
             }
 
-            $byCityId         = $group->groupBy('city_id');
-            $cityBoundsMap    = $this->boundsPerCity($byCityId, $convertedById);
-            $countryBoundsMap = $this->boundsPerCountry($byCityId, $convertedById);
-            $globalBounds     = $this->computeBounds(
-                $group->map(fn($e) => $convertedById[$e->id])->filter()->values()
-            );
+            $rateMap = $this->buildRateMap($allEstimates, $currency);
 
-            $group->each(function ($e) use ($convertedById, $cityBoundsMap, $countryBoundsMap, $globalBounds) {
-                $e->converted_price = $convertedById[$e->id] ?? null;
-                $b = $cityBoundsMap->get($e->city_id)
-                    ?? $countryBoundsMap->get($e->city->country_id)
-                    ?? $globalBounds;
-                $e->is_outlier = $e->converted_price === null
-                    || ($b !== null && !$this->withinBounds($e->converted_price, $b));
-            });
+            $convertedById = $allEstimates->mapWithKeys(fn($e) => [
+                $e->id => isset($rateMap[$e->currency_id])
+                    ? (float) $e->price * $rateMap[$e->currency_id]
+                    : null,
+            ]);
 
-            $windowed = $cutoff ? $group->filter(fn($e) => $e->recorded_at >= $cutoff) : $group;
+            // City→country map: avoids city.country eager-load per estimate.
+            $cityCountryMap = City::whereIn('id', $allEstimates->pluck('city_id')->unique()->all())
+                ->pluck('country_id', 'id')
+                ->all();
 
-            foreach ($windowed->groupBy('city_id') as $cityId => $cityGroup) {
-                $avg = $this->averageOfClean($cityGroup);
-                if ($avg !== null) {
-                    $result[$cityId][$product->id] = $avg;
+            $cutoff    = $days > 0 ? Carbon::now()->subDays($days) : null;
+            $byProduct = $allEstimates->groupBy('product_id');
+            $result    = [];
+
+            foreach ($sortedIds as $productId) {
+                $group = $byProduct->get($productId, collect());
+
+                if ($group->isEmpty()) {
+                    continue;
+                }
+
+                $byCityId      = $group->groupBy('city_id');
+                $cityBoundsMap = $this->boundsPerCity($byCityId, $convertedById);
+
+                // Country bounds without relation traversal, using the preloaded city→country map.
+                $countryBoundsMap = $byCityId
+                    ->groupBy(fn(Collection $g) => $cityCountryMap[$g->first()->city_id] ?? 0)
+                    ->map(fn(Collection $cityGroups) => $this->computeBounds(
+                        $cityGroups->flatten(1)->map(fn($e) => $convertedById[$e->id])->filter()->values()
+                    ))
+                    ->filter();
+
+                $globalBounds = $this->computeBounds(
+                    $group->map(fn($e) => $convertedById[$e->id])->filter()->values()
+                );
+
+                $group->each(function ($e) use ($convertedById, $cityBoundsMap, $countryBoundsMap, $globalBounds, $cityCountryMap) {
+                    $e->converted_price = $convertedById[$e->id] ?? null;
+                    $countryId          = $cityCountryMap[$e->city_id] ?? 0;
+                    $b                  = $cityBoundsMap->get($e->city_id)
+                        ?? $countryBoundsMap->get($countryId)
+                        ?? $globalBounds;
+                    $e->is_outlier      = $e->converted_price === null
+                        || ($b !== null && !$this->withinBounds($e->converted_price, $b));
+                });
+
+                $windowed = $cutoff ? $group->filter(fn($e) => $e->recorded_at >= $cutoff) : $group;
+
+                foreach ($windowed->groupBy('city_id') as $cityId => $cityGroup) {
+                    $avg = $this->averageOfClean($cityGroup);
+                    if ($avg !== null) {
+                        $result[$cityId][$productId] = $avg;
+                    }
                 }
             }
-        }
 
-        return $result;
+            return $result;
+        });
     }
 
     /**
@@ -516,23 +663,128 @@ class PriceAggregator
      *     total_products:      int,             distinct products with any clean data
      * }
      */
-    public function bulkCoverageByProduct(Currency $currency, int $days = 0): array
+    public function bulkCoverageByProduct(Currency $currency, Collection $products, int $days = 0): array
     {
-        $allEstimates = PriceEstimate::query()
-            ->select('id', 'price', 'currency_id', 'city_id', 'product_id', 'recorded_at')
-            ->get();
+        $sortedIds = $products->pluck('id')->sort()->values();
 
-        if ($allEstimates->isEmpty()) {
+        if ($sortedIds->isEmpty()) {
             return ['city_product_counts' => [], 'product_city_counts' => [], 'total_products' => 0];
         }
 
-        // Pre-load exchange rates — one query instead of per-estimate convert() calls.
-        $uniqueCurrencyIds = $allEstimates->pluck('currency_id')->unique()->all();
-        $rateMap = ExchangeRate::whereIn('from_currency_id', $uniqueCurrencyIds)
-            ->where('to_currency_id', $currency->id)
-            ->pluck('rate', 'from_currency_id')
-            ->put($currency->id, 1.0)
-            ->all();
+        // Versioned cache: invalidated whenever any relevant product's estimates change.
+        $versionMap  = Cache::many($sortedIds->map(fn($id) => "agg_v:{$id}")->all());
+        $versionHash = md5(implode(',', array_values($versionMap)));
+        $cacheKey    = "agg:bulkCoverage:{$currency->id}:{$days}:{$versionHash}";
+
+        return Cache::remember($cacheKey, 3600, function () use ($sortedIds, $currency, $days) {
+            $allEstimates = PriceEstimate::whereIn('product_id', $sortedIds->all())
+                ->select('id', 'price', 'currency_id', 'city_id', 'product_id', 'recorded_at')
+                ->get();
+
+            if ($allEstimates->isEmpty()) {
+                return ['city_product_counts' => [], 'product_city_counts' => [], 'total_products' => 0];
+            }
+
+            $rateMap = $this->buildRateMap($allEstimates, $currency);
+
+            $convertedById = $allEstimates->mapWithKeys(fn($e) => [
+                $e->id => isset($rateMap[$e->currency_id])
+                    ? (float) $e->price * $rateMap[$e->currency_id]
+                    : null,
+            ]);
+
+            // Pre-load city→country mapping — avoids city.country eager-load per estimate.
+            $cityCountryMap = City::whereIn('id', $allEstimates->pluck('city_id')->unique()->all())
+                ->pluck('country_id', 'id')
+                ->all();
+
+            $cutoff    = $days > 0 ? Carbon::now()->subDays($days) : null;
+            $byProduct = $allEstimates->groupBy('product_id');
+
+            $cityProductCounts = [];
+            $productCityCounts = [];
+
+            foreach ($byProduct as $productId => $group) {
+                $byCityId = $group->groupBy('city_id');
+
+                $cityBoundsMap = $this->boundsPerCity($byCityId, $convertedById);
+
+                $countryBoundsMap = $byCityId
+                    ->groupBy(fn(Collection $g) => $cityCountryMap[$g->first()->city_id] ?? 0)
+                    ->map(fn(Collection $cityGroups) =>
+                        $this->computeBounds(
+                            $cityGroups->flatten(1)
+                                ->map(fn($e) => $convertedById[$e->id])
+                                ->filter()
+                                ->values()
+                        )
+                    )
+                    ->filter();
+
+                $globalBounds = $this->computeBounds(
+                    $group->map(fn($e) => $convertedById[$e->id])->filter()->values()
+                );
+
+                // Tag every estimate for this product (bounds from all-time data above).
+                $group->each(function ($e) use ($convertedById, $cityBoundsMap, $countryBoundsMap, $globalBounds, $cityCountryMap) {
+                    $countryId          = $cityCountryMap[$e->city_id] ?? 0;
+                    $b                  = $cityBoundsMap->get($e->city_id)
+                        ?? $countryBoundsMap->get($countryId)
+                        ?? $globalBounds;
+                    $e->converted_price = $convertedById[$e->id] ?? null;
+                    $e->is_outlier      = $e->converted_price === null
+                        || ($b !== null && !$this->withinBounds($e->converted_price, $b));
+                });
+
+                // Apply display window, then count cities with at least one clean estimate.
+                $windowed = $cutoff ? $group->filter(fn($e) => $e->recorded_at >= $cutoff) : $group;
+
+                $productCityCounts[$productId] = 0;
+
+                foreach ($windowed->groupBy('city_id') as $cityId => $cityGroup) {
+                    if ($cityGroup->contains('is_outlier', false)) {
+                        $cityProductCounts[$cityId] = ($cityProductCounts[$cityId] ?? 0) + 1;
+                        $productCityCounts[$productId]++;
+                    }
+                }
+            }
+
+            return [
+                'city_product_counts' => $cityProductCounts,
+                'product_city_counts' => $productCityCounts,
+                'total_products'      => count(array_filter($productCityCounts)),
+            ];
+        });
+    }
+
+    /**
+     * Compute city average and outlier flag for a collection of user estimates in 3 DB queries,
+     * regardless of how many estimates are passed in.
+     *
+     * Replaces per-estimate calls to cityAverage() + isEstimateOutlier() on the dashboard.
+     * Uses the same rate-map pattern as bulkCityMetrics() — no Eloquent relation traversal.
+     *
+     * @param  Collection<PriceEstimate>  $userEstimates  Non-deleted, already loaded.
+     * @return array<int, array{city_average: ?float, is_outlier: bool, converted_price: ?float}>
+     *         Keyed by estimate ID.
+     */
+    public function bulkEstimateStats(
+        Collection $userEstimates,
+        Currency   $currency,
+        int        $days = 30,
+    ): array {
+        if ($userEstimates->isEmpty()) return [];
+
+        $productIds = $userEstimates->pluck('product_id')->unique()->values()->all();
+
+        // Load all estimates for these products — needed to compute outlier bounds.
+        $allEstimates = PriceEstimate::whereIn('product_id', $productIds)
+            ->select('id', 'price', 'currency_id', 'city_id', 'product_id', 'recorded_at')
+            ->get();
+
+        if ($allEstimates->isEmpty()) return [];
+
+        $rateMap = $this->buildRateMap($allEstimates, $currency);
 
         $convertedById = $allEstimates->mapWithKeys(fn($e) => [
             $e->id => isset($rateMap[$e->currency_id])
@@ -540,70 +792,79 @@ class PriceAggregator
                 : null,
         ]);
 
-        // Pre-load city→country mapping — avoids city.country eager-load per estimate.
+        // City→country map for bounds fallback — avoids relation traversal.
         $cityCountryMap = City::whereIn('id', $allEstimates->pluck('city_id')->unique()->all())
             ->pluck('country_id', 'id')
             ->all();
 
         $cutoff    = $days > 0 ? Carbon::now()->subDays($days) : null;
         $byProduct = $allEstimates->groupBy('product_id');
+        $allById   = $allEstimates->keyBy('id');
 
-        $cityProductCounts = [];
-        $productCityCounts = [];
+        // Per-product: tag every estimate with is_outlier and compute per-city averages.
+        $productCityAvg = [];
 
-        foreach ($byProduct as $productId => $group) {
-            $byCityId = $group->groupBy('city_id');
+        foreach ($productIds as $productId) {
+            $group = $byProduct->get($productId, collect());
+            if ($group->isEmpty()) continue;
 
-            // City-level bounds (same as boundsPerCity, no relations needed).
+            $byCityId      = $group->groupBy('city_id');
             $cityBoundsMap = $this->boundsPerCity($byCityId, $convertedById);
 
-            // Country-level bounds — inline equivalent of boundsPerCountry()
-            // using the preloaded $cityCountryMap instead of the city.country relation.
             $countryBoundsMap = $byCityId
                 ->groupBy(fn(Collection $g) => $cityCountryMap[$g->first()->city_id] ?? 0)
-                ->map(fn(Collection $cityGroups) =>
-                    $this->computeBounds(
-                        $cityGroups->flatten(1)
-                            ->map(fn($e) => $convertedById[$e->id])
-                            ->filter()
-                            ->values()
-                    )
-                )
+                ->map(fn(Collection $cityGroups) => $this->computeBounds(
+                    $cityGroups->flatten(1)->map(fn($e) => $convertedById[$e->id])->filter()->values()
+                ))
                 ->filter();
 
             $globalBounds = $this->computeBounds(
                 $group->map(fn($e) => $convertedById[$e->id])->filter()->values()
             );
 
-            // Tag every estimate for this product (bounds from all-time data above).
             $group->each(function ($e) use ($convertedById, $cityBoundsMap, $countryBoundsMap, $globalBounds, $cityCountryMap) {
+                $e->converted_price = $convertedById[$e->id] ?? null;
                 $countryId          = $cityCountryMap[$e->city_id] ?? 0;
                 $b                  = $cityBoundsMap->get($e->city_id)
                     ?? $countryBoundsMap->get($countryId)
                     ?? $globalBounds;
-                $e->converted_price = $convertedById[$e->id] ?? null;
                 $e->is_outlier      = $e->converted_price === null
                     || ($b !== null && !$this->withinBounds($e->converted_price, $b));
             });
 
-            // Apply display window, then count cities that have at least one clean estimate.
-            $windowed = $cutoff ? $group->filter(fn($e) => $e->recorded_at >= $cutoff) : $group;
-
-            $productCityCounts[$productId] = 0;
-
-            foreach ($windowed->groupBy('city_id') as $cityId => $cityGroup) {
-                if ($cityGroup->contains('is_outlier', false)) {
-                    $cityProductCounts[$cityId] = ($cityProductCounts[$cityId] ?? 0) + 1;
-                    $productCityCounts[$productId]++;
-                }
+            foreach ($byCityId as $cityId => $cityGroup) {
+                $windowed = $cutoff
+                    ? $cityGroup->filter(fn($e) => $e->recorded_at >= $cutoff)
+                    : $cityGroup;
+                $productCityAvg[$productId][$cityId] = $this->averageOfClean($windowed);
             }
         }
 
-        return [
-            'city_product_counts' => $cityProductCounts,
-            'product_city_counts' => $productCityCounts,
-            'total_products'      => count(array_filter($productCityCounts)),
-        ];
+        $result = [];
+        foreach ($userEstimates as $estimate) {
+            $id        = $estimate->id;
+            $productId = $estimate->product_id;
+            $cityId    = $estimate->city_id;
+
+            $convertedPrice = $convertedById[$id] ?? null;
+
+            if (!$cityId) {
+                $result[$id] = ['city_average' => null, 'is_outlier' => false, 'converted_price' => $convertedPrice];
+                continue;
+            }
+
+            $tagged      = $allById->get($id);
+            $isOutlier   = $tagged ? (bool) $tagged->is_outlier : false;
+            $cityAverage = $productCityAvg[$productId][$cityId] ?? null;
+
+            $result[$id] = [
+                'city_average'    => $cityAverage,
+                'is_outlier'      => $isOutlier,
+                'converted_price' => $convertedPrice,
+            ];
+        }
+
+        return $result;
     }
 
     /**
@@ -821,6 +1082,21 @@ class PriceAggregator
     // -------------------------------------------------------------------------
     // Private — bounds computation
     // -------------------------------------------------------------------------
+
+    /**
+     * Pre-fetch exchange rates for all currencies present in $estimates.
+     * Returns array keyed by from_currency_id with the scalar rate to $currency.
+     * Always includes $currency->id => 1.0 so same-currency estimates need no special case.
+     */
+    private function buildRateMap(Collection $estimates, Currency $currency): array
+    {
+        $uniqueCurrencyIds = $estimates->pluck('currency_id')->unique()->all();
+        return ExchangeRate::whereIn('from_currency_id', $uniqueCurrencyIds)
+            ->where('to_currency_id', $currency->id)
+            ->pluck('rate', 'from_currency_id')
+            ->put($currency->id, 1.0)
+            ->all();
+    }
 
     /**
      * Per-city bounds map. Accepts estimates already grouped by city_id.

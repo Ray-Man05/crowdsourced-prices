@@ -22,10 +22,14 @@ class Category extends Model
 
     public static function withSortedProducts(): Collection
     {
+        // orderBy('name') on a JSON column sorts by the raw JSON string, not the translated
+        // value, producing non-deterministic results. JSON_UNQUOTE(JSON_EXTRACT(..., '$.en'))
+        // extracts and sorts by the English name, consistent with ProductCatalog's JSON search.
         return self::with(['products' => function ($query) {
-                $query->with('unit')->orderBy('name');
+                $query->with('unit')
+                      ->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.en'))");
             }])
-            ->orderBy('name')
+            ->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.en'))")
             ->get();
     }
 }

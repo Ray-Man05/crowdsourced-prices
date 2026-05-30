@@ -10,6 +10,7 @@ use App\Livewire\MapPage;
 use App\Livewire\Admin\CategoryManager;
 use App\Livewire\Admin\UnitManager;
 use App\Livewire\Admin\ProductManager;
+use App\Livewire\CityComparison;
 use App\Livewire\Dashboard;
 
 // Public landing page
@@ -26,6 +27,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/catalog', ProductCatalog::class)->name('catalog');
     Route::get('/map', MapPage::class)->name('map');
+    Route::get('/compare', CityComparison::class)->name('compare');
     Route::get('/products/{product}', ProductDetail::class)->name('products.show');
 
     // Route::get('/dashboard', fn() => view('dashboard'))->middleware('verified')->name('dashboard');

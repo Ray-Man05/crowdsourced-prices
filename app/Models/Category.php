@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use App\Traits\HasTranslations;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Traits\HasTranslations;
 use Illuminate\Support\Collection;
 
 class Category extends Model
@@ -26,9 +26,9 @@ class Category extends Model
         // value, producing non-deterministic results. JSON_UNQUOTE(JSON_EXTRACT(..., '$.en'))
         // extracts and sorts by the English name, consistent with ProductCatalog's JSON search.
         return self::with(['products' => function ($query) {
-                $query->with('unit')
-                      ->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.en'))");
-            }])
+            $query->with('unit')
+                ->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.en'))");
+        }])
             ->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.en'))")
             ->get();
     }

@@ -19,7 +19,7 @@ class RestCountriesService
     {
         $data = $this->fetchAll('currencies,unMember');
 
-        $seen       = [];
+        $seen = [];
         $currencies = [];
 
         foreach ($data as $country) {
@@ -38,16 +38,16 @@ class RestCountriesService
                     continue;
                 }
 
-                $seen[$code]  = true;
+                $seen[$code] = true;
                 $currencies[] = [
-                    'name'   => $meta['name'],
-                    'code'   => $code,
+                    'name' => $meta['name'],
+                    'code' => $code,
                     'symbol' => $meta['symbol'] ?? null,
                 ];
             }
         }
 
-        usort($currencies, fn($a, $b) => strcmp($a['code'], $b['code']));
+        usort($currencies, fn ($a, $b) => strcmp($a['code'], $b['code']));
 
         return $currencies;
     }
@@ -76,13 +76,13 @@ class RestCountriesService
             }
 
             $countries[] = [
-                'name'          => $country['name']['common'],
-                'iso_code'      => $country['cca2'],
+                'name' => $country['name']['common'],
+                'iso_code' => $country['cca2'],
                 'currency_code' => array_key_first($countryCurrencies),
             ];
         }
 
-        usort($countries, fn($a, $b) => strcmp($a['name'], $b['name']));
+        usort($countries, fn ($a, $b) => strcmp($a['name'], $b['name']));
 
         return $countries;
     }
@@ -101,7 +101,7 @@ class RestCountriesService
      */
     public function getCountryMetadata(array $iso2Codes): array
     {
-        $data   = $this->fetchAll('cca2,population,languages');
+        $data = $this->fetchAll('cca2,population,languages');
         $result = [];
 
         foreach ($data as $entry) {
@@ -113,7 +113,7 @@ class RestCountriesService
 
             $result[$iso2] = [
                 'population' => (int) ($entry['population'] ?? 0),
-                'languages'  => array_keys($entry['languages'] ?? []),
+                'languages' => array_keys($entry['languages'] ?? []),
             ];
         }
 
@@ -124,7 +124,7 @@ class RestCountriesService
 
     private function fetchAll(string $fields): array
     {
-        return Http::get(self::BASE_URL . '/all', ['fields' => $fields])
+        return Http::get(self::BASE_URL.'/all', ['fields' => $fields])
             ->throw()
             ->json();
     }

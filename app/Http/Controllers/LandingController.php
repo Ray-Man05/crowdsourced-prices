@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\City;
-use App\Models\Country;
 use App\Models\PriceEstimate;
 use App\Services\PriceAggregator;
 
@@ -14,7 +12,7 @@ class LandingController extends Controller
         $cities = $aggregator->coverageByCity(0);
 
         $stats = [
-            'cities'    => $cities->count(),
+            'cities' => $cities->count(),
             'estimates' => PriceEstimate::count(),
             'countries' => $cities->pluck('country')->unique()->count(),
         ];

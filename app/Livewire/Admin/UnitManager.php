@@ -18,7 +18,7 @@ class UnitManager extends AdminManager
         return [
             'form.name_en' => ['required', 'string', 'max:100'],
             'form.name_fr' => ['required', 'string', 'max:100'],
-            'form.symbol'  => ['required', 'string', 'max:20'],
+            'form.symbol' => ['required', 'string', 'max:20'],
         ];
     }
 
@@ -29,18 +29,18 @@ class UnitManager extends AdminManager
 
     protected function fillForm(int $id): void
     {
-        $unit       = Unit::findOrFail($id);
+        $unit = Unit::findOrFail($id);
         $this->form = [
             'name_en' => $unit->getRawTranslations('name')['en'] ?? '',
             'name_fr' => $unit->getRawTranslations('name')['fr'] ?? '',
-            'symbol'  => $unit->symbol,
+            'symbol' => $unit->symbol,
         ];
     }
 
     protected function persist(): void
     {
         $data = [
-            'name'   => ['en' => $this->form['name_en'], 'fr' => $this->form['name_fr']],
+            'name' => ['en' => $this->form['name_en'], 'fr' => $this->form['name_fr']],
             'symbol' => $this->form['symbol'],
         ];
 
@@ -53,8 +53,7 @@ class UnitManager extends AdminManager
     {
         $units = Unit::query()
             ->withCount('products')
-            ->when($this->search, fn($q) =>
-                $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.en')) LIKE ?", ["%{$this->search}%"])
+            ->when($this->search, fn ($q) => $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.en')) LIKE ?", ["%{$this->search}%"])
             )
             ->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.en'))")
             ->paginate(15);

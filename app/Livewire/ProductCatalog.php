@@ -4,7 +4,6 @@ namespace App\Livewire;
 
 use App\Models\Category;
 use App\Models\City;
-use App\Models\Currency;
 use App\Models\Product;
 use App\Services\PriceAggregator;
 use Illuminate\Support\Collection;
@@ -12,16 +11,19 @@ use Livewire\Component;
 
 class ProductCatalog extends Component
 {
-    public string $search           = '';
-    public array  $selectedCategories = [];
-    public int    $days             = 30;
-    public ?int   $cityId           = null;
+    public string $search = '';
+
+    public array $selectedCategories = [];
+
+    public int $days = 30;
+
+    public ?int $cityId = null;
 
     public function mount(): void
     {
-        $user         = auth()->user();
+        $user = auth()->user();
         $this->cityId = $user->city_id;
-        $this->days   = 30;
+        $this->days = 30;
     }
 
     public function updatedSearch(): void
@@ -33,7 +35,7 @@ class ProductCatalog extends Component
     {
         if (in_array($categoryId, $this->selectedCategories)) {
             $this->selectedCategories = array_values(
-                array_filter($this->selectedCategories, fn($id) => $id !== $categoryId)
+                array_filter($this->selectedCategories, fn ($id) => $id !== $categoryId)
             );
         } else {
             $this->selectedCategories[] = $categoryId;
@@ -42,7 +44,7 @@ class ProductCatalog extends Component
 
     public function clearFilters(): void
     {
-        $this->search             = '';
+        $this->search = '';
         $this->selectedCategories = [];
     }
 
@@ -55,23 +57,22 @@ class ProductCatalog extends Component
         return Product::with(['category', 'unit'])
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
-                    $q->whereRaw("LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, '$.en'))) LIKE ?", ['%' . strtolower($this->search) . '%'])
-                      ->orWhereRaw("LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, '$.fr'))) LIKE ?", ['%' . strtolower($this->search) . '%']);
+                    $q->whereRaw("LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, '$.en'))) LIKE ?", ['%'.strtolower($this->search).'%'])
+                        ->orWhereRaw("LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, '$.fr'))) LIKE ?", ['%'.strtolower($this->search).'%']);
                 });
             })
-            ->when($this->selectedCategories, fn($query) =>
-                $query->whereIn('category_id', $this->selectedCategories)
+            ->when($this->selectedCategories, fn ($query) => $query->whereIn('category_id', $this->selectedCategories)
             )
             ->get();
     }
 
     public function render()
     {
-        $city     = $this->cityId ? City::find($this->cityId) : null;
+        $city = $this->cityId ? City::find($this->cityId) : null;
         $currency = auth()->user()->effectiveCurrency();
         $products = $this->filteredProducts;
 
-        $aggregator  = app(PriceAggregator::class);
+        $aggregator = app(PriceAggregator::class);
 
         $bulkMetrics = ($city && $currency)
             ? $aggregator->bulkCityMetrics($products, $city, $currency, $this->days)
@@ -82,13 +83,13 @@ class ProductCatalog extends Component
             : [];
 
         return view('livewire.product-catalog', [
-            'products'               => $products,
-            'bulkMetrics'            => $bulkMetrics,
-            'userStatuses'           => $userStatuses,
-            'categories'             => Category::orderBy('name')->get(),
-            'city'                   => $city,
-            'currency'               => $currency,
-            'days'                   => $this->days,
+            'products' => $products,
+            'bulkMetrics' => $bulkMetrics,
+            'userStatuses' => $userStatuses,
+            'categories' => Category::orderBy('name')->get(),
+            'city' => $city,
+            'currency' => $currency,
+            'days' => $this->days,
         ])->layout('layouts.app');
     }
 }

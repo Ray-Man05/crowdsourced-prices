@@ -13,22 +13,28 @@ use Livewire\Component;
 
 class Dashboard extends Component
 {
-    public ?int   $comparisonProductId = null;
-    public string $activeSection       = 'estimates';
+    public ?int $comparisonProductId = null;
+
+    public string $activeSection = 'estimates';
 
     // Basket form state
-    public bool   $showBasketForm  = false;
-    public ?int   $editingBasketId = null;
-    public string $basketFormName  = '';
+    public bool $showBasketForm = false;
+
+    public ?int $editingBasketId = null;
+
+    public string $basketFormName = '';
+
     public string $basketFormColor = '#10b981';
 
     // Basket item management
-    public ?int   $openBasketId      = null;
-    public int    $basketItemFormKey = 0;
+    public ?int $openBasketId = null;
+
+    public int $basketItemFormKey = 0;
 
     // Basket price view
-    public ?int   $selectedBasketId = null;
-    public string $pricePeriod      = '30';
+    public ?int $selectedBasketId = null;
+
+    public string $pricePeriod = '30';
 
     public function mount(): void
     {
@@ -40,7 +46,7 @@ class Dashboard extends Component
                 ->value('product_id');
         }
 
-        if (!$this->comparisonProductId) {
+        if (! $this->comparisonProductId) {
             $this->comparisonProductId = Product::first()?->id;
         }
     }
@@ -49,7 +55,7 @@ class Dashboard extends Component
 
     public function getRecentEstimatesProperty(): Collection
     {
-        $user     = auth()->user();
+        $user = auth()->user();
         $currency = $user->effectiveCurrency();
 
         $estimates = PriceEstimate::where('user_id', $user->id)
@@ -58,7 +64,9 @@ class Dashboard extends Component
             ->latest('created_at')
             ->get();
 
-        if ($estimates->isEmpty() || !$currency) return collect();
+        if ($estimates->isEmpty() || ! $currency) {
+            return collect();
+        }
 
         $aggregator = app(PriceAggregator::class);
 
@@ -79,14 +87,14 @@ class Dashboard extends Component
                 && $cityAvg > 0
                 && ($convertedPrice < $cityAvg / 5 || $convertedPrice > $cityAvg * 5);
 
-            $position  = null;
+            $position = null;
             $deviation = null;
             if ($cityAvg !== null && $convertedPrice !== null && $cityAvg > 0) {
                 $deviation = (($convertedPrice - $cityAvg) / $cityAvg) * 100;
-                $position  = match (true) {
+                $position = match (true) {
                     $deviation < -10 => 'low',
-                    $deviation > 10  => 'high',
-                    default          => 'average',
+                    $deviation > 10 => 'high',
+                    default => 'average',
                 };
             }
 
@@ -94,15 +102,15 @@ class Dashboard extends Component
                 ->addDays(PriceEstimate::ESTIMATE_COOLDOWN_DAYS);
 
             return [
-                'estimate'          => $estimate,
-                'converted_price'   => $convertedPrice,
-                'city_average'      => $cityAvg,
-                'deviation'         => $deviation,
-                'position'          => $position,
-                'is_outlier'        => $isOutlier,
-                'cooldown_ends'     => $cooldownEndsAt,
-                'symbol'            => $currency->symbol,
-                'city_mismatch'     => $estimate->city_id !== $user->city_id,
+                'estimate' => $estimate,
+                'converted_price' => $convertedPrice,
+                'city_average' => $cityAvg,
+                'deviation' => $deviation,
+                'position' => $position,
+                'is_outlier' => $isOutlier,
+                'cooldown_ends' => $cooldownEndsAt,
+                'symbol' => $currency->symbol,
+                'city_mismatch' => $estimate->city_id !== $user->city_id,
                 'currency_mismatch' => $estimate->currency_id !== $currency->id,
             ];
         });
@@ -110,20 +118,26 @@ class Dashboard extends Component
 
     public function getComparisonProperty(): ?array
     {
-        if (!$this->comparisonProductId) return null;
+        if (! $this->comparisonProductId) {
+            return null;
+        }
 
-        $user       = auth()->user();
-        $currency   = $user->effectiveCurrency();
-        $product    = Product::with('unit')->find($this->comparisonProductId);
+        $user = auth()->user();
+        $currency = $user->effectiveCurrency();
+        $product = Product::with('unit')->find($this->comparisonProductId);
         $aggregator = app(PriceAggregator::class);
 
-        if (!$product || !$user->city) return null;
+        if (! $product || ! $user->city) {
+            return null;
+        }
 
-        $cityAvg    = $aggregator->cityAverage($product, $user->city, $currency, 30);
+        $cityAvg = $aggregator->cityAverage($product, $user->city, $currency, 30);
         $countryAvg = $aggregator->countryAverage($product, $user->city->country, $currency, 30);
-        $globalAvg  = $aggregator->globalAverage($product, $currency, 30);
+        $globalAvg = $aggregator->globalAverage($product, $currency, 30);
 
-        if ($cityAvg === null && $countryAvg === null && $globalAvg === null) return null;
+        if ($cityAvg === null && $countryAvg === null && $globalAvg === null) {
+            return null;
+        }
 
         $vsCountry = ($cityAvg !== null && $countryAvg !== null && $countryAvg > 0)
             ? (($cityAvg - $countryAvg) / $countryAvg) * 100
@@ -134,33 +148,36 @@ class Dashboard extends Component
             : null;
 
         return [
-            'product'     => $product,
-            'city'        => $user->city,
-            'country'     => $user->city->country,
-            'city_avg'    => $cityAvg,
+            'product' => $product,
+            'city' => $user->city,
+            'country' => $user->city->country,
+            'city_avg' => $cityAvg,
             'country_avg' => $countryAvg,
-            'global_avg'  => $globalAvg,
-            'vs_country'  => $vsCountry,
-            'vs_global'   => $vsGlobal,
-            'symbol'      => $currency->symbol,
+            'global_avg' => $globalAvg,
+            'vs_country' => $vsCountry,
+            'vs_global' => $vsGlobal,
+            'symbol' => $currency->symbol,
         ];
     }
 
     public function getActivityMapProperty(): array
     {
         $since = Carbon::now()->subDays(364);
+
         return PriceEstimate::where('user_id', auth()->id())
             ->where('recorded_at', '>=', $since)
             ->selectRaw('DATE(recorded_at) as day, COUNT(*) as cnt')
             ->groupBy('day')
             ->pluck('cnt', 'day')
-            ->map(fn($c) => (int) $c)
+            ->map(fn ($c) => (int) $c)
             ->all();
     }
 
     public function setSection(string $section): void
     {
-        if (!in_array($section, ['estimates', 'baskets'])) return;
+        if (! in_array($section, ['estimates', 'baskets'])) {
+            return;
+        }
         $this->activeSection = $section;
     }
 
@@ -192,7 +209,9 @@ class Dashboard extends Component
     public function getCityProductIdsProperty(): array
     {
         $user = auth()->user();
-        if (!$user->city_id) return [];
+        if (! $user->city_id) {
+            return [];
+        }
 
         return PriceEstimate::where('city_id', $user->city_id)
             ->distinct()
@@ -203,22 +222,24 @@ class Dashboard extends Component
     public function openCreateBasket(): void
     {
         $this->editingBasketId = null;
-        $this->basketFormName  = '';
+        $this->basketFormName = '';
         $this->basketFormColor = '#10b981';
-        $this->showBasketForm  = true;
+        $this->showBasketForm = true;
     }
 
     public function cancelBasketForm(): void
     {
-        $this->showBasketForm  = false;
+        $this->showBasketForm = false;
         $this->editingBasketId = null;
-        $this->basketFormName  = '';
+        $this->basketFormName = '';
     }
 
     public function updateBasket(int $id, string $name, string $color): void
     {
         $name = trim($name);
-        if (empty($name) || mb_strlen($name) > 80) return;
+        if (empty($name) || mb_strlen($name) > 80) {
+            return;
+        }
 
         UserBasket::where('id', $id)
             ->where('user_id', auth()->id())
@@ -233,9 +254,9 @@ class Dashboard extends Component
             ->findOrFail($id);
 
         $this->editingBasketId = $id;
-        $this->basketFormName  = $basket->name ?? '';
+        $this->basketFormName = $basket->name ?? '';
         $this->basketFormColor = $basket->color ?? '#10b981';
-        $this->showBasketForm  = true;
+        $this->showBasketForm = true;
     }
 
     public function saveBasket(): void
@@ -243,9 +264,9 @@ class Dashboard extends Component
         $this->validate(['basketFormName' => 'required|string|max:80']);
 
         $data = [
-            'name'  => trim($this->basketFormName),
+            'name' => trim($this->basketFormName),
             'color' => $this->basketFormColor,
-            'type'  => 'saved',
+            'type' => 'saved',
         ];
 
         if ($this->editingBasketId) {
@@ -266,8 +287,12 @@ class Dashboard extends Component
     {
         UserBasket::where('id', $id)->where('user_id', auth()->id())->delete();
 
-        if ($this->openBasketId === $id)    $this->openBasketId    = null;
-        if ($this->selectedBasketId === $id) $this->selectedBasketId = null;
+        if ($this->openBasketId === $id) {
+            $this->openBasketId = null;
+        }
+        if ($this->selectedBasketId === $id) {
+            $this->selectedBasketId = null;
+        }
     }
 
     public function selectBasketForPricing(int $id): void
@@ -277,34 +302,42 @@ class Dashboard extends Component
 
     public function setPricePeriod(string $period): void
     {
-        if (!in_array($period, ['30', '90', '365', '0'])) return;
+        if (! in_array($period, ['30', '90', '365', '0'])) {
+            return;
+        }
         $this->pricePeriod = $period;
     }
 
     public function getBasketPriceProperty(): ?array
     {
-        if (!$this->selectedBasketId) return null;
+        if (! $this->selectedBasketId) {
+            return null;
+        }
 
         $user = auth()->user();
-        if (!$user->city_id) return null;
+        if (! $user->city_id) {
+            return null;
+        }
 
         // getBasketsProperty() already loaded all baskets with the same eager-load chain.
         // Re-using that result avoids a redundant DB query + full relation hydration.
         $basket = $this->baskets->firstWhere('id', $this->selectedBasketId);
 
-        if (!$basket || $basket->items->isEmpty()) return null;
+        if (! $basket || $basket->items->isEmpty()) {
+            return null;
+        }
 
-        $currency   = $user->effectiveCurrency();
+        $currency = $user->effectiveCurrency();
         $aggregator = app(PriceAggregator::class);
-        $days       = (int) $this->pricePeriod;
+        $days = (int) $this->pricePeriod;
 
         // Single bulk call (version-cached) instead of N individual cityAverage() calls.
-        $products = $basket->items->map(fn($i) => $i->product)->filter();
-        $metrics  = $aggregator->bulkCityMetrics($products, $user->city, $currency, $days);
+        $products = $basket->items->map(fn ($i) => $i->product)->filter();
+        $metrics = $aggregator->bulkCityMetrics($products, $user->city, $currency, $days);
 
-        $total     = 0.0;
+        $total = 0.0;
         $breakdown = [];
-        $missing   = [];
+        $missing = [];
 
         foreach ($basket->items as $item) {
             $avg = $metrics[$item->product_id]['average'] ?? null;
@@ -312,28 +345,28 @@ class Dashboard extends Component
             if ($avg === null) {
                 $missing[] = $item;
             } else {
-                $subtotal    = round($avg * (float) $item->quantity, 2);
-                $total      += $subtotal;
+                $subtotal = round($avg * (float) $item->quantity, 2);
+                $total += $subtotal;
                 $breakdown[] = [
-                    'name'           => $item->product->name,
-                    'unit'           => $item->product->unit?->symbol ?? '',
+                    'name' => $item->product->name,
+                    'unit' => $item->product->unit?->symbol ?? '',
                     'category_color' => $item->product->category?->color ?? '#9ca3af',
-                    'quantity'       => (float) $item->quantity,
-                    'avg'            => round($avg, 2),
-                    'subtotal'       => $subtotal,
+                    'quantity' => (float) $item->quantity,
+                    'avg' => round($avg, 2),
+                    'subtotal' => $subtotal,
                 ];
             }
         }
 
         return [
-            'basket'    => $basket,
-            'city'      => $user->city,
-            'symbol'    => $currency->symbol,
-            'total'     => round($total, 2),
+            'basket' => $basket,
+            'city' => $user->city,
+            'symbol' => $currency->symbol,
+            'total' => round($total, 2),
             'breakdown' => $breakdown,
-            'missing'   => $missing,
-            'complete'  => empty($missing),
-            'days'      => $days,
+            'missing' => $missing,
+            'complete' => empty($missing),
+            'days' => $days,
         ];
     }
 
@@ -345,7 +378,9 @@ class Dashboard extends Component
 
     public function addItemToBasket(int $basketId, int $productId, float $qty): void
     {
-        if (!$productId || $qty <= 0) return;
+        if (! $productId || $qty <= 0) {
+            return;
+        }
 
         UserBasket::where('id', $basketId)
             ->where('user_id', auth()->id())
@@ -367,28 +402,28 @@ class Dashboard extends Component
 
     public function render()
     {
-        $user        = auth()->user();
+        $user = auth()->user();
         $isEstimates = $this->activeSection === 'estimates';
-        $isBaskets   = $this->activeSection === 'baskets';
+        $isBaskets = $this->activeSection === 'baskets';
 
         // Categories are pushed to window.__dashCategories via @push('scripts') on the
         // initial full-page load. Livewire AJAX responses do NOT include @push content,
         // so Alpine on the client reads from the already-set window global on re-renders.
         // Sending an empty collection on AJAX skips the query + large JSON serialization
         // on every tab switch — the same pattern used by CityComparison.
-        $isAjax     = request()->header('X-Livewire') !== null;
+        $isAjax = request()->header('X-Livewire') !== null;
         $categories = $isAjax ? collect() : Category::withSortedProducts();
 
         return view('livewire.dashboard', [
-            'user'            => $user,
-            'categories'      => $categories,
-            'totalEstimates'  => $isEstimates ? PriceEstimate::where('user_id', $user->id)->count() : 0,
+            'user' => $user,
+            'categories' => $categories,
+            'totalEstimates' => $isEstimates ? PriceEstimate::where('user_id', $user->id)->count() : 0,
             'recentEstimates' => $isEstimates ? $this->recentEstimates : collect(),
-            'comparison'      => $isEstimates ? $this->comparison : null,
-            'activityMap'     => $isEstimates ? $this->activityMap : [],
-            'baskets'         => $isBaskets ? $this->baskets : collect(),
-            'cityProductIds'  => $isBaskets ? $this->cityProductIds : [],
-            'basketPrice'     => ($isBaskets && $this->selectedBasketId && $user->city_id)
+            'comparison' => $isEstimates ? $this->comparison : null,
+            'activityMap' => $isEstimates ? $this->activityMap : [],
+            'baskets' => $isBaskets ? $this->baskets : collect(),
+            'cityProductIds' => $isBaskets ? $this->cityProductIds : [],
+            'basketPrice' => ($isBaskets && $this->selectedBasketId && $user->city_id)
                                      ? $this->basketPrice
                                      : null,
         ])->layout('layouts.app');

@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-Use Illuminate\Support\Collection;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class PriceEstimate extends Model
@@ -33,7 +33,7 @@ class PriceEstimate extends Model
     protected $fillable = ['price', 'user_id', 'product_id', 'currency_id', 'city_id', 'recorded_at'];
 
     protected $casts = [
-        'price'       => 'float',
+        'price' => 'float',
         'recorded_at' => 'datetime',
     ];
 
@@ -70,9 +70,7 @@ class PriceEstimate extends Model
      * currency and return their mean. Estimates whose currency has no exchange
      * rate to the target are silently excluded (not counted in the denominator).
      *
-     * @param  Collection<PriceEstimate>  $estimates  
-     * @param  Currency                   $targetCurrency
-     * @return float|null
+     * @param  Collection<PriceEstimate>  $estimates
      */
     public static function convertAndAverage(
         Collection $estimates,
@@ -100,6 +98,7 @@ class PriceEstimate extends Model
         if ($days > 0) {
             $query->where('recorded_at', '>=', Carbon::now()->subDays($days));
         }
+
         return $query;
     }
 
@@ -127,7 +126,7 @@ class PriceEstimate extends Model
             ->latest('recorded_at')
             ->value('recorded_at');
 
-        if (!$latest) {
+        if (! $latest) {
             return null;
         }
 

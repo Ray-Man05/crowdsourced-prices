@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::table('price_estimates', function (Blueprint $table) {
             $table->index(['product_id', 'recorded_at'], 'pe_product_recorded_at');
-            $table->index(['product_id', 'city_id'],     'pe_product_city');
+            $table->index(['product_id', 'city_id'], 'pe_product_city');
         });
     }
 

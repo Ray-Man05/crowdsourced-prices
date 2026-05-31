@@ -5,13 +5,10 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\City;
-use App\Models\Country;
-use App\Models\Currency;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
@@ -82,18 +79,19 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at'    => 'datetime',
-            'location_updated_at'  => 'datetime',
-            'password'             => 'hashed',
+            'email_verified_at' => 'datetime',
+            'location_updated_at' => 'datetime',
+            'password' => 'hashed',
         ];
     }
 
     public function locationCooldownEndsAt(): ?\Illuminate\Support\Carbon
     {
-        if (!$this->location_updated_at) {
+        if (! $this->location_updated_at) {
             return null;
         }
         $endsAt = $this->location_updated_at->copy()->addDays(static::LOCATION_COOLDOWN_DAYS);
+
         return $endsAt->isFuture() ? $endsAt : null;
     }
 
@@ -101,6 +99,7 @@ class User extends Authenticatable
     {
         return $this->locationCooldownEndsAt() === null;
     }
+
     public function latestEstimateFor(Product $product): ?PriceEstimate
     {
         return $this->priceEstimates()
@@ -111,7 +110,7 @@ class User extends Authenticatable
 
     public function canEstimate(Product $product): bool
     {
-        return !PriceEstimate::isOnCooldown($this, $product);
+        return ! PriceEstimate::isOnCooldown($this, $product);
     }
 
     public function cooldownEndsAt(Product $product): ?Carbon

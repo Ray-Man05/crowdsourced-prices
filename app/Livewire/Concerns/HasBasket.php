@@ -24,7 +24,9 @@ trait HasBasket
     protected function addItem(int $productId, float $quantity): bool
     {
         $product = Product::with(['unit', 'category'])->find($productId);
-        if (!$product) return false;
+        if (! $product) {
+            return false;
+        }
 
         $dbBasket = $this->getActiveBasket();
         $dbBasket->addItem($productId, $quantity);
@@ -33,15 +35,16 @@ trait HasBasket
             $this->basket[$productId]['quantity'] += $quantity;
         } else {
             $this->basket[$productId] = [
-                'product_id'     => $productId,
-                'name'           => $product->name,
-                'unit'           => $product->unit?->symbol ?? '',
-                'quantity'       => $quantity,
+                'product_id' => $productId,
+                'name' => $product->name,
+                'unit' => $product->unit?->symbol ?? '',
+                'quantity' => $quantity,
                 'category_color' => $product->category?->color ?? '#ffffff',
             ];
         }
 
         $this->afterItemAdded($productId);
+
         return true;
     }
 

@@ -43,7 +43,7 @@ return new class extends Migration
             }
             $parts[] = 'ADD INDEX pe_product_city (product_id, city_id, deleted_at)';
 
-            DB::statement('ALTER TABLE price_estimates ' . implode(', ', $parts));
+            DB::statement('ALTER TABLE price_estimates '.implode(', ', $parts));
         } else {
             Schema::table('price_estimates', function (Blueprint $table) {
                 $table->dropIndex('pe_product_recorded_at');
@@ -57,19 +57,19 @@ return new class extends Migration
     public function down(): void
     {
         if (DB::getDriverName() === 'mysql') {
-            DB::statement("
+            DB::statement('
                 ALTER TABLE price_estimates
                 DROP  INDEX pe_product_recorded_at,
                 ADD   INDEX pe_product_recorded_at (product_id, recorded_at),
                 DROP  INDEX pe_product_city,
                 ADD   INDEX pe_product_city        (product_id, city_id)
-            ");
+            ');
         } else {
             Schema::table('price_estimates', function (Blueprint $table) {
                 $table->dropIndex('pe_product_recorded_at');
                 $table->dropIndex('pe_product_city');
                 $table->index(['product_id', 'recorded_at'], 'pe_product_recorded_at');
-                $table->index(['product_id', 'city_id'],     'pe_product_city');
+                $table->index(['product_id', 'city_id'], 'pe_product_city');
             });
         }
     }

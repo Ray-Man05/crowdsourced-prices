@@ -12,7 +12,7 @@ class ExchangeRate extends Model
     protected $fillable = ['rate', 'from_currency_id', 'to_currency_id', 'fetched_at'];
 
     protected $casts = [
-        'rate'       => 'float',
+        'rate' => 'float',
         'fetched_at' => 'datetime',
     ];
 
@@ -59,7 +59,7 @@ class ExchangeRate extends Model
      * suitable for a bulk upsert() call. Use this when inserting many rates
      * at once; use setRate() for individual updates where cache invalidation matters.
      *
-     * @return array{array, array}  Always exactly two records: [forward, inverse]
+     * @return array{array, array} Always exactly two records: [forward, inverse]
      */
     public static function buildRecordPair(
         Currency $from,

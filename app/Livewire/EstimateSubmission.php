@@ -11,10 +11,14 @@ use Livewire\Component;
 class EstimateSubmission extends Component
 {
     public Product $product;
-    public string  $price = '';
-    public string  $error = '';
-    public bool    $showModifyForm = false;
-    public string  $modifyPrice = '';
+
+    public string $price = '';
+
+    public string $error = '';
+
+    public bool $showModifyForm = false;
+
+    public string $modifyPrice = '';
 
     public function mount(Product $product): void
     {
@@ -40,7 +44,10 @@ class EstimateSubmission extends Component
     public function getDaysRemainingProperty(): ?int
     {
         $endsAt = PriceEstimate::cooldownEndsAt(auth()->user(), $this->product);
-        if (!$endsAt) return null;
+        if (! $endsAt) {
+            return null;
+        }
+
         return max(1, (int) ceil(Carbon::now()->diffInHours($endsAt) / 24));
     }
 
@@ -50,7 +57,9 @@ class EstimateSubmission extends Component
     public function getIsOutlierProperty(): bool
     {
         $estimate = $this->latestEstimate;
-        if (!$estimate || $estimate->trashed()) return false;
+        if (! $estimate || $estimate->trashed()) {
+            return false;
+        }
 
         return app(PriceAggregator::class)
             ->isEstimateOutlier($estimate, auth()->user()->effectiveCurrency());
@@ -59,22 +68,26 @@ class EstimateSubmission extends Component
     public function startModify(): void
     {
         $estimate = $this->latestEstimate;
-        if (!$estimate || $estimate->trashed()) return;
+        if (! $estimate || $estimate->trashed()) {
+            return;
+        }
 
-        $this->modifyPrice    = (string) $estimate->price;
+        $this->modifyPrice = (string) $estimate->price;
         $this->showModifyForm = true;
     }
 
     public function cancelModify(): void
     {
         $this->showModifyForm = false;
-        $this->modifyPrice    = '';
+        $this->modifyPrice = '';
     }
 
     public function saveModify(): void
     {
         $estimate = $this->latestEstimate;
-        if (!$estimate || $estimate->trashed() || $estimate->user_id !== auth()->id()) return;
+        if (! $estimate || $estimate->trashed() || $estimate->user_id !== auth()->id()) {
+            return;
+        }
 
         $this->validate(['modifyPrice' => ['required', 'numeric', 'min:0.01', 'max:999999.99']]);
 
@@ -82,7 +95,7 @@ class EstimateSubmission extends Component
         $estimate->update(['price' => (float) $this->modifyPrice]);
 
         $this->showModifyForm = false;
-        $this->modifyPrice    = '';
+        $this->modifyPrice = '';
         $this->dispatch('estimate-changed');
     }
 
@@ -92,6 +105,7 @@ class EstimateSubmission extends Component
 
         if (PriceEstimate::isOnCooldown(auth()->user(), $this->product)) {
             $this->error = __('You are still on cooldown for this product.');
+
             return;
         }
 
@@ -100,11 +114,11 @@ class EstimateSubmission extends Component
         $user = auth()->user();
 
         PriceEstimate::create([
-            'price'       => (float) $this->price,
-            'user_id'     => $user->id,
-            'product_id'  => $this->product->id,
+            'price' => (float) $this->price,
+            'user_id' => $user->id,
+            'product_id' => $this->product->id,
             'currency_id' => $user->effectiveCurrency()->id,
-            'city_id'     => $user->city_id,
+            'city_id' => $user->city_id,
             'recorded_at' => now(),
         ]);
 
@@ -116,7 +130,9 @@ class EstimateSubmission extends Component
     {
         $estimate = $this->latestEstimate;
 
-        if (!$estimate || $estimate->trashed() || $estimate->user_id !== auth()->id()) return;
+        if (! $estimate || $estimate->trashed() || $estimate->user_id !== auth()->id()) {
+            return;
+        }
 
         $estimate->delete();
         $this->dispatch('estimate-changed');
@@ -128,20 +144,20 @@ class EstimateSubmission extends Component
         $user = auth()->user();
         $effectiveCurrency = $user->effectiveCurrency();
 
-        $estimateCurrency = $estimate && !$estimate->trashed() ? $estimate->currency : null;
-        $estimateCity     = $estimate && !$estimate->trashed() ? $estimate->city     : null;
-        $cityMismatch     = $estimateCity && $estimateCity->id !== $user->city_id;
+        $estimateCurrency = $estimate && ! $estimate->trashed() ? $estimate->currency : null;
+        $estimateCity = $estimate && ! $estimate->trashed() ? $estimate->city : null;
+        $cityMismatch = $estimateCity && $estimateCity->id !== $user->city_id;
         $currencyMismatch = $estimateCurrency && $effectiveCurrency
             && $estimateCurrency->id !== $effectiveCurrency->id;
 
         return view('livewire.estimate-submission', [
-            'currency'         => $effectiveCurrency,
-            'latestEstimate'   => $estimate,
-            'daysRemaining'    => $this->daysRemaining,
-            'isOutlier'        => $this->isOutlier,
+            'currency' => $effectiveCurrency,
+            'latestEstimate' => $estimate,
+            'daysRemaining' => $this->daysRemaining,
+            'isOutlier' => $this->isOutlier,
             'estimateCurrency' => $estimateCurrency,
-            'estimateCity'     => $estimateCity,
-            'cityMismatch'     => $cityMismatch,
+            'estimateCity' => $estimateCity,
+            'cityMismatch' => $cityMismatch,
             'currencyMismatch' => $currencyMismatch,
         ]);
     }

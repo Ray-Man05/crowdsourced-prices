@@ -2,13 +2,11 @@
 
 namespace App\Models;
 
+use App\Services\PriceAggregator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use App\Services\PriceAggregator;
 
 class City extends Model
 {
@@ -40,10 +38,9 @@ class City extends Model
     /**
      * Get the average price for a product in this city.
      *
-     * @param  Product       $product
-     * @param  Currency      $targetCurrency  Currency to express the result in.
-     * @param  int           $days            Only consider estimates from the past N days. 0 = all time.
-     * @return float|null    Null if no convertible estimates exist.
+     * @param  Currency  $targetCurrency  Currency to express the result in.
+     * @param  int  $days  Only consider estimates from the past N days. 0 = all time.
+     * @return float|null Null if no convertible estimates exist.
      */
     public function averagePrice(
         Product $product,
@@ -54,12 +51,11 @@ class City extends Model
     }
 
     /**
-    * Return all cities keyed by country, for use in grouped UI selects and listings.
-    * Returns a Collection of Countries, each with their cities eager-loaded.
-    */
+     * Return all cities keyed by country, for use in grouped UI selects and listings.
+     * Returns a Collection of Countries, each with their cities eager-loaded.
+     */
     public static function groupedByCountry(): Collection
     {
         return Country::with('cities')->get();
     }
-
 }

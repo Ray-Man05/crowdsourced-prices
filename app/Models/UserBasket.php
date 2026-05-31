@@ -30,12 +30,13 @@ class UserBasket extends Model
         if ($item) {
             $item->increment('quantity', $quantity);
             $item->refresh();
+
             return $item;
         }
 
         return $this->items()->create([
             'product_id' => $productId,
-            'quantity'   => $quantity,
+            'quantity' => $quantity,
         ]);
     }
 
@@ -58,13 +59,15 @@ class UserBasket extends Model
         $result = [];
         foreach ($items as $item) {
             $product = $item->product;
-            if (!$product) continue;
+            if (! $product) {
+                continue;
+            }
 
             $result[$product->id] = [
-                'product_id'     => $product->id,
-                'name'           => $product->name,
-                'unit'           => $product->unit?->symbol ?? '',
-                'quantity'       => (float) $item->quantity,
+                'product_id' => $product->id,
+                'name' => $product->name,
+                'unit' => $product->unit?->symbol ?? '',
+                'quantity' => (float) $item->quantity,
                 'category_color' => $product->category?->color ?? '#ffffff',
             ];
         }

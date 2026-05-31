@@ -44,7 +44,9 @@ class Currency extends Model
      */
     public function getRateTo(Currency $target): ?float
     {
-        if ($this->id === $target->id) return 1.0;
+        if ($this->id === $target->id) {
+            return 1.0;
+        }
 
         $mapKey = "{$this->id}:{$target->id}";
 
@@ -54,10 +56,9 @@ class Currency extends Model
 
         $cacheKey = "exchange_rate:{$this->id}:{$target->id}";
 
-        $rate = Cache::remember($cacheKey, 86400, fn() =>
-            ExchangeRate::where('from_currency_id', $this->id)
-                ->where('to_currency_id', $target->id)
-                ->value('rate')
+        $rate = Cache::remember($cacheKey, 86400, fn () => ExchangeRate::where('from_currency_id', $this->id)
+            ->where('to_currency_id', $target->id)
+            ->value('rate')
         );
 
         return self::$rateCache[$mapKey] = $rate;
@@ -69,14 +70,15 @@ class Currency extends Model
     public function convert(float $amount, Currency $target): ?float
     {
         $rate = $this->getRateTo($target);
+
         return $rate !== null ? $amount * $rate : null;
     }
 
     /**
      * Format an amount in this currency according to its symbol.
-    */
+     */
     public function format(float $amount, int $decimals = 2): string
     {
-        return $this->symbol . number_format($amount, $decimals);
+        return $this->symbol.number_format($amount, $decimals);
     }
 }

@@ -2,17 +2,19 @@
 
 namespace App\Livewire\Admin;
 
+use Illuminate\Database\Eloquent\Model;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Illuminate\Database\Eloquent\Model;
 
 abstract class AdminManager extends Component
 {
     use WithPagination;
 
-    public bool   $showModal = false;
-    public ?int   $editingId = null;
-    public string $search    = '';
+    public bool $showModal = false;
+
+    public ?int $editingId = null;
+
+    public string $search = '';
 
     /**
      * The Eloquent model class this manager operates on.

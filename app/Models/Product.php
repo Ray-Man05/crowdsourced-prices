@@ -2,21 +2,21 @@
 
 namespace App\Models;
 
+use App\Services\PriceAggregator;
+use App\Traits\HasTranslations;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use App\Traits\HasTranslations;
-use App\Services\PriceAggregator;
 
 class Product extends Model
 {
     use HasTranslations;
 
     protected $fillable = ['name', 'description', 'category_id', 'unit_id'];
+
     protected $casts = [
-        'name'        => 'array',
+        'name' => 'array',
         'description' => 'array',
     ];
 
@@ -43,9 +43,7 @@ class Product extends Model
     /**
      * Global average price for this product across all cities and all users.
      *
-     * @param  Currency  $targetCurrency
-     * @param  int       $days            0 = all time.
-     * @return float|null
+     * @param  int  $days  0 = all time.
      */
     public function averagePrice(
         Currency $targetCurrency,
@@ -57,10 +55,7 @@ class Product extends Model
     /**
      * Average price for this product scoped to one city.
      *
-     * @param  City      $city
-     * @param  Currency  $targetCurrency
-     * @param  int       $days            0 = all time.
-     * @return float|null
+     * @param  int  $days  0 = all time.
      */
     public function averagePriceInCity(
         City $city,

@@ -21,15 +21,15 @@ trait HasTranslations
      */
     public function translate(string $attribute, ?string $locale = null): string
     {
-        $locale       ??= App::getLocale();
-        $fallback      = config('app.fallback_locale', 'en');
-        $translations  = $this->getOriginal($attribute);
+        $locale ??= App::getLocale();
+        $fallback = config('app.fallback_locale', 'en');
+        $translations = $this->getOriginal($attribute);
 
         if (is_string($translations)) {
             $translations = json_decode($translations, true);
         }
 
-        if (!is_array($translations)) {
+        if (! is_array($translations)) {
             return '';
         }
 
@@ -61,6 +61,7 @@ trait HasTranslations
         $current = $this->getRawTranslations($attribute);
         $current[$locale] = $value;
         $this->attributes[$attribute] = json_encode($current);
+
         return $this;
     }
 

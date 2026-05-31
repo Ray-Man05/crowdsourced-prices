@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 class UserPreferencesController extends Controller
 {
     public function switch_locale(Request $request, string $locale): RedirectResponse
     {
-        if (!in_array($locale, ['en', 'fr'])) {
+        if (! in_array($locale, ['en', 'fr'])) {
             abort(400);
         }
 
@@ -24,7 +24,7 @@ class UserPreferencesController extends Controller
 
     public function switch_theme(Request $request, string $theme): RedirectResponse
     {
-        if (!in_array($theme, ['light', 'dark'])) {
+        if (! in_array($theme, ['light', 'dark'])) {
             abort(400);
         }
 

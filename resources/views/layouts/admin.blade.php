@@ -43,7 +43,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {{-- Admin nav --}}
-        <nav class="flex gap-1 mb-7">
+        <nav class="flex flex-wrap gap-1 mb-7">
             @foreach ([
                 ['route' => 'admin.categories', 'label' => __('Categories')],
                 ['route' => 'admin.units',      'label' => __('Units')],
@@ -64,5 +64,6 @@
     </div>
 
     @livewireScripts
+    @stack('scripts')
 </body>
 </html>

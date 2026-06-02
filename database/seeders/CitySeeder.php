@@ -22,12 +22,13 @@ class CitySeeder extends Seeder
      *   ≥ 10 000 000  → 5
      */
     private const BASE_QUOTA_TIERS = [
-        1_000_000   => 2,
-        5_000_000   => 4,
-        10_000_000  => 6,
-        PHP_INT_MAX => 10,
+        1_000_000 => 2,
+        5_000_000 => 4,
+        10_000_000 => 6,
+        20_000_000 => 10,
+        50_000_000 => 15,
+        PHP_INT_MAX => 20,
     ];
-
 
     /** Rank of the city whose population is used for the city-level pop bonus. */
     private const CITY_POP_RANK = 10;
@@ -35,30 +36,32 @@ class CitySeeder extends Seeder
     /** Bonus based on the size of the city at rank CITY_POP_RANK
      *  For instance if the 10th largest city of some country has more than 5 000 000 people
      *  we add an extra 20 cities to the country
-     * 
-    */
-    private const POP_HIGH_THRESHOLD = 5_000_000;
-    private const POP_HIGH_BONUS     = 20;
+     */
+    private const POP_HIGH_THRESHOLD = 1_000_000;
 
-    private const POP_MID_THRESHOLD  = 1_000_000;
-    private const POP_MID_BONUS      = 10;
+    private const POP_HIGH_BONUS = 20;
 
+    private const POP_MID_THRESHOLD = 500_000;
 
-    private const IMPORTANT_COUNTRY_BONUS  = 25;
-    private const IMPORTANT_CURRENCY_BONUS = 10;
-    private const IMPORTANT_LANGUAGE_BONUS = 10;
+    private const POP_MID_BONUS = 10;
 
+    private const IMPORTANT_COUNTRY_BONUS = 50;
 
+    private const IMPORTANT_CURRENCY_BONUS = 15;
 
-    private const IMPORTANT_COUNTRIES  = [
-        'US', 'CA', 'MX', 'BR', 
-        'GB', 'FR', 'DE', 'ES', 'IT', 'PL', 'NL', 'BE', 'RU', 
-        'CN', 'IN', 'ID', 'JP', 'KR', 'TR',
-        'MA', 'DZ', 'EG', 'NG', 'ZA',
-        'AU', 'NZ'
-        ];
+    private const IMPORTANT_LANGUAGE_BONUS = 15;
+
+    private const IMPORTANT_COUNTRIES = [
+        'US', 'CA', 'MX', 'BR', 'AR',
+        'GB', 'FR', 'DE', 'ES', 'IT', 'PL', 'NL', 'BE', 'RU',
+        'CN', 'IN', 'ID', 'TH', 'JP', 'KR', 'TR', 'SA', 'AE', 'PH',
+        'MA', 'DZ', 'EG', 'ZA', 'KE', 'TA',
+        'AU', 'NZ',
+    ];
+
     private const IMPORTANT_CURRENCIES = ['USD', 'EUR', 'GBP'];
-    private const IMPORTANT_LANGUAGES  = ['en', 'fr', 'es', 'ar', 'zh', 'ru', 'de'];
+
+    private const IMPORTANT_LANGUAGES = ['en', 'fr', 'es', 'ar', 'zh', 'ru', 'de'];
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
@@ -70,11 +73,12 @@ class CitySeeder extends Seeder
     {
         $csvPath = $this->resolveCsvPath();
 
-        if (!file_exists($csvPath)) {
+        if (! file_exists($csvPath)) {
             $this->command?->error(
-                "CSV file not found at:\n  {$csvPath}\n" .
+                "CSV file not found at:\n  {$csvPath}\n".
                 'Drop the file there and re-run the seeder.'
             );
+
             return;
         }
 
@@ -82,6 +86,7 @@ class CitySeeder extends Seeder
 
         if ($countries->isEmpty()) {
             $this->command?->warn('No countries found — run CountrySeeder first.');
+
             return;
         }
 
@@ -92,6 +97,23 @@ class CitySeeder extends Seeder
         $rowsByIso2 = $this->parseCsv($csvPath, $countries->keys()->all());
         $this->command?->info('CSV parsed. Selecting cities …');
 
+        // ── Log file setup ────────────────────────────────────────────────────
+        $logDir = base_path('tmp');
+        $logPath = $logDir.'/city_seeder_'.now()->format('Y-m-d_His').'.txt';
+
+        if (! is_dir($logDir)) {
+            mkdir($logDir, 0755, true);
+        }
+
+        $logHandle = fopen($logPath, 'w');
+        $log = function (string $line) use ($logHandle): void {
+            fwrite($logHandle, $line.PHP_EOL);
+        };
+
+        $log('City Seeder — '.now()->toDateTimeString());
+        $log(str_repeat('-', 60));
+        // ─────────────────────────────────────────────────────────────────────
+
         $totalInserted = 0;
 
         foreach ($countries as $iso2 => $country) {
@@ -99,38 +121,50 @@ class CitySeeder extends Seeder
 
             if (empty($rows)) {
                 $this->command?->warn("  [{$iso2}] {$country->name}: no rows in CSV — skipped.");
+                $log(sprintf('  [%s] %s: no rows in CSV — skipped.', $iso2, $country->name));
+
                 continue;
             }
 
             $countryPopulation = $apiData[$iso2]['population'] ?? 0;
-            $countryLanguages  = $apiData[$iso2]['languages']  ?? [];
+            $countryLanguages = $apiData[$iso2]['languages'] ?? [];
 
             $selected = $this->selectCities($rows, $iso2, $country->currency?->code, $countryPopulation, $countryLanguages);
-            $count    = count($selected);
+            $count = count($selected);
 
             foreach ($selected as $row) {
                 City::create([
-                    'name'       => $row['city'] !== '' ? $row['city'] : $row['city_ascii'],
+                    'name' => $row['city'] !== '' ? $row['city'] : $row['city_ascii'],
                     'country_id' => $country->id,
-                    'lat'        => (float) $row['lat'],
-                    'lng'        => (float) $row['lng'],
+                    'lat' => (float) $row['lat'],
+                    'lng' => (float) $row['lng'],
                 ]);
             }
 
             $totalInserted += $count;
-            $this->command?->line(sprintf(
+
+            $line = sprintf(
                 '  [%s] %-20s %2d cities (quota %d, available %d)',
                 $iso2,
                 $country->name,
                 $count,
                 $this->computeQuota($rows, $iso2, $country->currency?->code, $countryPopulation, $countryLanguages),
                 count($rows),
-            ));
+            );
+
+            $this->command?->line($line);
+            $log($line);
         }
 
-        $this->command?->info(
-            "Done. Inserted {$totalInserted} cities across {$countries->count()} countries."
-        );
+        $summary = "Done. Inserted {$totalInserted} cities across {$countries->count()} countries.";
+        $this->command?->info($summary);
+
+        $log(str_repeat('-', 60));
+        $log($summary);
+
+        fclose($logHandle);
+
+        $this->command?->info("Log written to: {$logPath}");
     }
 
     // ── File resolution ───────────────────────────────────────────────────────
@@ -149,7 +183,7 @@ class CitySeeder extends Seeder
     private function parseCsv(string $path, array $validIso2): array
     {
         $validSet = array_flip($validIso2);
-        $grouped  = [];
+        $grouped = [];
 
         $handle = fopen($path, 'r');
 
@@ -159,12 +193,13 @@ class CitySeeder extends Seeder
         }
 
         $headers = fgetcsv($handle);
-        if (!$headers) {
+        if (! $headers) {
             fclose($handle);
+
             return [];
         }
 
-        $headers  = array_map('trim', $headers);
+        $headers = array_map('trim', $headers);
         $colCount = count($headers);
 
         while (($line = fgetcsv($handle)) !== false) {
@@ -172,10 +207,10 @@ class CitySeeder extends Seeder
                 continue;
             }
 
-            $row  = array_combine($headers, $line);
+            $row = array_combine($headers, $line);
             $iso2 = trim($row['iso2'] ?? '');
 
-            if (!isset($validSet[$iso2])) {
+            if (! isset($validSet[$iso2])) {
                 continue;
             }
 
@@ -184,16 +219,18 @@ class CitySeeder extends Seeder
             }
 
             $row['population'] = $this->normalisePopulation($row['population'] ?? '');
-            $grouped[$iso2][]  = $row;
+            $grouped[$iso2][] = $row;
         }
 
         fclose($handle);
+
         return $grouped;
     }
 
     private function normalisePopulation(string $raw): int
     {
         $clean = str_replace([',', ' ', "\u{00A0}"], '', trim($raw));
+
         return is_numeric($clean) ? (int) $clean : 0;
     }
 
@@ -206,7 +243,7 @@ class CitySeeder extends Seeder
         int $countryPopulation,
         array $countryLanguages,
     ): array {
-        usort($cities, fn($a, $b) => $b['population'] <=> $a['population']);
+        usort($cities, fn ($a, $b) => $b['population'] <=> $a['population']);
 
         $quota = $this->computeQuota($cities, $iso2, $currencyCode, $countryPopulation, $countryLanguages);
 

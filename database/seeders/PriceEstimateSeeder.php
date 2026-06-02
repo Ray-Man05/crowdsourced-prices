@@ -3,110 +3,146 @@
 namespace Database\Seeders;
 
 use App\Models\Currency;
-use App\Models\PriceEstimate;
+use App\Models\ExchangeRate;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class PriceEstimateSeeder extends Seeder
 {
-    /**
-     * Mean prices in USD per product name.
-     * Adjust these to tune the seeded data.
-     */
+    private const CHUNK_SIZE = 1000;
+
     private array $means = [
         // Fruits (per kg)
-        'Banana'         => 1.20,
-        'Apple'          => 2.50,
-        'Orange'         => 1.80,
-        'Strawberry'     => 4.00,
-        'Mango'          => 3.50,
+        'Banana' => 1.20,
+        'Apple' => 1.50,
+        'Orange' => 1.80,
+        'Strawberry' => 7.00,
+        'Mango' => 4.50,
         // Vegetables (per kg)
-        'Tomato'         => 2.00,
-        'Potato'         => 1.00,
-        'Onion'          => 0.90,
-        'Carrot'         => 1.10,
-        'Spinach'        => 2.80,
+        'Tomato' => 2.00,
+        'Potato' => 1.00,
+        'Onion' => 0.90,
+        'Carrot' => 1.10,
+        'Spinach' => 2.80,
         // Dairy and Eggs
-        'Whole Milk'     => 1.20,  // per liter
-        'Butter'         => 8.00,  // per kg
-        'Cheddar Cheese' => 10.00, // per kg
-        'Yogurt'         => 3.50,  // per kg
-        'Eggs'           => 0.30,  // per piece
+        'Whole Milk' => 1.20,
+        'Butter' => 8.00,
+        'Cheddar Cheese' => 10.00,
+        'Yogurt' => 3.50,
+        'Eggs' => 0.30,
         // Meat and Poultry (per kg)
         'Chicken Breast' => 7.00,
-        'Ground Beef'    => 10.00,
-        'Lamb Chops'     => 14.00,
-        'Pork Ribs'      => 9.00,
-        'Turkey'         => 6.00,
-        // Herbs and Spices (per 100g)
-        'Black Pepper'   => 1.50,
-        'Cumin'          => 1.20,
-        'Paprika'        => 1.00,
-        'Cinnamon'       => 1.30,
-        'Turmeric'       => 1.10,
+        'Chicken Thighs' => 6.00,
+        'Ground Beef' => 10.00,
+        'Lamb Chops' => 14.00,
+        'Pork Ribs' => 9.00,
+        'Turkey' => 6.00,
+        // Herbs and Spices (per kg)
+        'Black Pepper' => 12.50,
+        'Cumin' => 10.20,
+        'Paprika' => 10.00,
+        'Cinnamon' => 11.30,
+        'Turmeric' => 9.10,
         // Condiments
-        'Olive Oil'      => 8.00,  // per liter
-        'Ketchup'        => 3.00,  // per kg
-        'Mustard'        => 3.50,  // per kg
-        'Soy Sauce'      => 4.00,  // per liter
-        'Honey'          => 9.00,  // per kg
+        'Olive Oil' => 8.00,
+        'Ketchup' => 3.00,
+        'Mustard' => 3.50,
+        'Soy Sauce' => 4.00,
+        'Honey' => 9.00,
     ];
 
-    /**
-     * Standard deviation as a fraction of the mean.
-     * 0.10 = ±10% spread around the mean.
-     */
     private float $spreadFraction = 0.10;
 
     public function run(): void
     {
-        $products   = Product::all()->keyBy('name');
-        $users      = User::all();
+        $products = Product::all()->keyBy('name');
         $currencies = Currency::all()->keyBy('code');
-        $usd        = $currencies['USD'];
+        $usd = $currencies['USD'];
+
+        // Eager-load the full chain: city → country → currency
+        $users = User::with('city.country.currency')->get();
+
+        // Pre-build rate lookup: [fromCurrencyId][toCurrencyId] => rate
+        $rates = [];
+        ExchangeRate::all(['from_currency_id', 'to_currency_id', 'rate'])
+            ->each(function ($r) use (&$rates) {
+                $rates[$r->from_currency_id][$r->to_currency_id] = $r->rate;
+            });
+
+        $convertFromUsd = function (float $amount, Currency $target) use ($usd, $rates): float {
+            if ($usd->id === $target->id) {
+                return $amount;
+            }
+            $rate = $rates[$usd->id][$target->id] ?? null;
+
+            return $rate !== null ? $amount * $rate : $amount;
+        };
+
+        // Build user → currency map (user_id => Currency)
+        // Fallback to USD
+        $userCurrencyMap = $users->mapWithKeys(function ($user) use ($usd) {
+            $currency = $user->city?->country?->currency ?? $usd;
+
+            return [$user->id => $currency];
+        });
+
+        // Pre-compute means in every currency actually used by users
+        $usedCurrencies = $userCurrencyMap->unique('id');
+        $meansInCurrency = [];
+        foreach ($this->means as $productName => $usdMean) {
+            foreach ($usedCurrencies as $currency) {
+                $meansInCurrency[$productName][$currency->id] = $convertFromUsd($usdMean, $currency);
+            }
+        }
+
+        $usersArray = $users->values()->all();
+        $userCount = count($usersArray);
+        $now = now()->toDateTimeString();
+        $rows = [];
 
         foreach ($products as $name => $product) {
-            $mean            = $this->means[$name] ?? 1.00;
-            $estimateCount   = random_int(40, 80);
+            $estimateCount = random_int(5000, 10000);
 
             for ($i = 0; $i < $estimateCount; $i++) {
-                $user     = $users->random();
+                $user = $usersArray[random_int(0, $userCount - 1)];
+                $currency = $userCurrencyMap[$user->id];
 
-                // $currency = $currencies->random();
-                $currency = $user->city?->currency ?? $currencies['USD'];
+                $mean = $meansInCurrency[$name][$currency->id]
+                      ?? $convertFromUsd($this->means[$name] ?? 1.00, $currency);
+                $price = max(0.01, round($this->gaussianRandom($mean, $mean * $this->spreadFraction), 2));
 
-                // Convert mean from USD to the estimate's currency
-                $meanInCurrency = $usd->convert($mean, $currency) ?? $mean;
-
-                // Gaussian-approximated random price around the mean
-                $price = $this->gaussianRandom($meanInCurrency, $meanInCurrency * $this->spreadFraction);
-                $price = max(0.01, round($price, 2));
-
-                // Random timestamp spread over the past year
-                $recordedAt = Carbon::now()->subDays(random_int(0, 365));
-
-                PriceEstimate::create([
-                    'price'       => $price,
-                    'user_id'     => $user->id,
-                    'product_id'  => $product->id,
+                $rows[] = [
+                    'price' => $price,
+                    'user_id' => $user->id,
+                    'product_id' => $product->id,
                     'currency_id' => $currency->id,
-                    'city_id'     => $user->city_id,
-                    'recorded_at' => $recordedAt,
-                ]);
+                    'city_id' => $user->city_id,
+                    'recorded_at' => Carbon::now()->subDays(random_int(0, 365))->toDateTimeString(),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+
+                if (count($rows) >= self::CHUNK_SIZE) {
+                    DB::table('price_estimates')->insert($rows);
+                    $rows = [];
+                }
             }
+        }
+
+        if (! empty($rows)) {
+            DB::table('price_estimates')->insert($rows);
         }
     }
 
-    /**
-     * Box-Muller transform: produces a normally distributed random float.
-     */
     private function gaussianRandom(float $mean, float $stdDev): float
     {
         $u1 = 1.0 - lcg_value();
         $u2 = 1.0 - lcg_value();
-        $z  = sqrt(-2.0 * log($u1)) * cos(2.0 * M_PI * $u2);
+        $z = sqrt(-2.0 * log($u1)) * cos(2.0 * M_PI * $u2);
+
         return $mean + $stdDev * $z;
     }
 }

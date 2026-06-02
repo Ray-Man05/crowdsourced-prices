@@ -15,6 +15,7 @@ class ExchangeRateSeeder extends Seeder
 
         if (! $apiKey) {
             $this->command?->warn('EXCHANGERATE_API_KEY is not set — skipping.');
+
             return;
         }
 
@@ -22,11 +23,13 @@ class ExchangeRateSeeder extends Seeder
 
         if ($currencies->isEmpty()) {
             $this->command?->warn('No currencies found — run CurrencySeeder first.');
+
             return;
         }
 
         if (! $currencies->has('USD')) {
             $this->command?->error('USD not found in currencies table.');
+
             return;
         }
 
@@ -34,12 +37,13 @@ class ExchangeRateSeeder extends Seeder
 
         if (empty($usdRates)) {
             $this->command?->error('Could not fetch exchange rates — aborting.');
+
             return;
         }
 
         // Keep only currencies present in both the DB and the API response
         $nonUsd = $currencies
-            ->filter(fn($currency, $code) => $code !== 'USD' && isset($usdRates[$code]) && $usdRates[$code] > 0);
+            ->filter(fn ($currency, $code) => $code !== 'USD' && isset($usdRates[$code]) && $usdRates[$code] > 0);
 
         $skipped = $currencies->count() - 1 - $nonUsd->count();
         if ($skipped > 0) {
@@ -50,8 +54,8 @@ class ExchangeRateSeeder extends Seeder
         // USD <-> X comes directly from the API.
         // A <-> B is derived as: rate(A→B) = usdToB / usdToA
         $records = [];
-        $codes   = $nonUsd->keys()->all();
-        $n       = count($codes);
+        $codes = $nonUsd->keys()->all();
+        $n = count($codes);
 
         foreach ($codes as $code) {
             array_push($records, ...ExchangeRate::buildRecordPair($currencies['USD'], $nonUsd[$code], $usdRates[$code]));
@@ -81,18 +85,21 @@ class ExchangeRateSeeder extends Seeder
             $response = Http::timeout(10)->get($url);
         } catch (\Throwable $e) {
             $this->command?->error("HTTP request failed: {$e->getMessage()}");
+
             return [];
         }
 
         if (! $response->successful()) {
             $this->command?->error("API returned HTTP {$response->status()}.");
+
             return [];
         }
 
         $data = $response->json();
 
         if (($data['result'] ?? '') !== 'success') {
-            $this->command?->error('API error: ' . ($data['error-type'] ?? 'unknown'));
+            $this->command?->error('API error: '.($data['error-type'] ?? 'unknown'));
+
             return [];
         }
 

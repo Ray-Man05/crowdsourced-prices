@@ -16,9 +16,13 @@
     </head>
     <body class="font-sans text-neutral-900 antialiased">
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-neutral-100 dark:bg-neutral-900">
+            {{-- <x-application-logo class="w-20 h-20 fill-current text-neutral-500" /> --}}
             <div>
-                <a href="/">
-                    <x-application-logo class="w-20 h-20 fill-current text-neutral-500" />
+                <a href="/" class="group inline-flex flex-col items-center gap-1 no-underline">
+                    <span class="text-2xl font-extrabold tracking-tight text-neutral-900 dark:text-white">
+                        {{ config('app.name') }}
+                    </span>
+                    <span class="h-0.5 w-8 rounded-full bg-primary-500 transition-all group-hover:w-full"></span>
                 </a>
             </div>
 

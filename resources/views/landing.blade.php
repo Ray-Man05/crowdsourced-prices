@@ -47,8 +47,8 @@
 
         /* ── Attribution: faint, above stat bar ── */
         #hero-map .leaflet-control-attribution {
-            font-size: 9px;
-            opacity: 0.4;
+            font-size: 11px;
+            opacity: 0.75;
             background: transparent;
             margin-bottom: 80px;
             color: inherit;
@@ -317,7 +317,7 @@
                 dark
                     ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
                     : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                { maxZoom: 18, attribution: '© <a href="https://carto.com">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OSM</a>' }
+                { maxZoom: 18, attribution: 'City data: <a href="https://simplemaps.com/data/world-cities">SimpleMaps</a> (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, filtered) | © <a href="https://carto.com">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OSM</a>' }
             ).addTo(map);
         }
 

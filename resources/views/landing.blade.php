@@ -137,16 +137,64 @@
                 bg-white/90 dark:bg-black/35 backdrop-blur-md
                 border-b border-neutral-200/70 dark:border-white/[0.05]">
         <a href="{{ route('landing') }}"
-           class="text-sm font-bold tracking-tight text-neutral-900 dark:text-white hover:opacity-70 transition">
+           class="text-lg font-bold tracking-tight text-neutral-900 dark:text-white hover:opacity-70 transition">
             {{ config('app.name') }}
         </a>
 
         <div class="flex items-center gap-3">
             @include('partials.preference-switches')
             @auth
-                <span class="hidden sm:block text-sm text-neutral-500 dark:text-neutral-400">
-                    {{ auth()->user()->name }}
-                </span>
+                <div class="group relative hidden sm:block">
+                    <span class="text-sm text-neutral-500 dark:text-neutral-400 cursor-default select-none">
+                        {{ auth()->user()->name }}
+                    </span>
+
+                    {{-- Dropdown: CSS group-hover only --}}
+                    <div class="absolute right-0 top-full pt-2 w-44 z-50
+                                opacity-0 -translate-y-1 pointer-events-none
+                                group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto
+                                transition-all duration-150">
+                        <div class="rounded-xl overflow-hidden border border-neutral-200/70 dark:border-white/[0.08]
+                                    bg-white/90 dark:bg-black/50 backdrop-blur-md
+                                    shadow-lg shadow-black/[0.08] dark:shadow-black/40
+                                    py-1">
+                            <a href="{{ route('dashboard') }}"
+                               class="flex items-center gap-2.5 px-4 py-2 text-sm text-neutral-600 dark:text-neutral-300
+                                      hover:text-neutral-900 dark:hover:text-white
+                                      hover:bg-neutral-50 dark:hover:bg-white/[0.05] transition-colors">
+                                <svg class="h-3.5 w-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                                </svg>
+                                {{ __('Dashboard') }}
+                            </a>
+                            <a href="{{ route('profile.edit') }}"
+                               class="flex items-center gap-2.5 px-4 py-2 text-sm text-neutral-600 dark:text-neutral-300
+                                      hover:text-neutral-900 dark:hover:text-white
+                                      hover:bg-neutral-50 dark:hover:bg-white/[0.05] transition-colors">
+                                <svg class="h-3.5 w-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                </svg>
+                                {{ __('Profile') }}
+                            </a>
+                            <div class="my-1 h-px bg-neutral-100 dark:bg-white/[0.05]"></div>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit"
+                                        class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-neutral-600 dark:text-neutral-300
+                                               hover:text-neutral-900 dark:hover:text-white
+                                               hover:bg-neutral-50 dark:hover:bg-white/[0.05] transition-colors text-left">
+                                    <svg class="h-3.5 w-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                    </svg>
+                                    {{ __('Log out') }}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
                 <a href="{{ route('catalog') }}"
                    class="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-lg
                           bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white
@@ -326,6 +374,7 @@
             .observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
         const cities = @json($cities->values());
+        const compareBaseUrl = @json(route('compare'));
         if (!cities.length) return;
 
         // Read primary-500 from the Tailwind probe element — no hardcoded hex values
@@ -360,10 +409,13 @@
             })
             .on('click', function () {
                 const label = city.count === 1 ? '1 submission' : city.count + ' submissions';
+                const compareUrl = compareBaseUrl + '?city_b=' + city.city_id;
                 sharedPopup
                     .setLatLng(this.getLatLng())
                     .setContent(
-                        '<div style="font-weight:600;font-size:13px;margin-bottom:1px">' + city.city_name + '</div>' +
+                        '<a href="' + compareUrl + '" style="font-weight:700;font-size:13px;margin-bottom:1px;color:' + primaryColor + ';text-decoration:none;display:flex;align-items:center;gap:3px">' +
+                            city.city_name + ' <span style="opacity:0.65">→</span>' +
+                        '</a>' +
                         '<div style="font-size:11px;opacity:0.5;margin-bottom:5px">' + city.country + '</div>' +
                         '<div style="font-size:12px;font-weight:600;color:' + primaryColor + '">' + label + '</div>'
                     )

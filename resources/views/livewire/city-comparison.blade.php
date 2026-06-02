@@ -349,6 +349,37 @@
         </div>
     @endif
 
+    {{-- ── Contribute prompt — shown when City A is the user's own city with no data ── --}}
+    @if ($cityAId && $cityBId && $showContributePrompt)
+        <div class="relative rounded-2xl border border-warning-300/60 dark:border-warning-500/20 shadow-card overflow-hidden">
+            <div class="absolute inset-0 backdrop-blur-sm bg-warning-50 dark:bg-warning-900/10 rounded-2xl"></div>
+            <div class="relative px-5 py-4 flex items-start gap-3.5">
+                <div class="shrink-0 mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center bg-warning-100 dark:bg-warning-800/30">
+                    <svg class="h-4 w-4 text-warning-600 dark:text-warning-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-warning-800 dark:text-warning-300">
+                        {{ __(':city has no price data yet', ['city' => $cityAName]) }}
+                    </p>
+                    <p class="text-xs mt-0.5 text-warning-600 dark:text-warning-500">
+                        {{ __('Your city has no recorded prices. Browse the catalog and be the first to contribute!') }}
+                    </p>
+                </div>
+                <a href="{{ route('catalog') }}"
+                   class="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold
+                          bg-warning-600 hover:bg-warning-700 active:scale-95 text-white transition-all shadow-sm">
+                    {{ __('Add prices') }}
+                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    @endif
+
     {{-- ── Product comparison + baskets (always present once both cities selected) ── --}}
     @if ($cityAId && $cityBId)
 

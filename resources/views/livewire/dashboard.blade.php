@@ -255,7 +255,8 @@
             </div>
 
             {{-- Recent submissions --}}
-            <div class="relative rounded-2xl overflow-hidden shadow-card
+            <div x-data="{ confirmDeleteId: null, confirmDeleteName: '' }"
+                 class="relative rounded-2xl overflow-hidden shadow-card
                         border border-neutral-200/80 dark:border-white/[0.06]">
                 <div class="absolute inset-0 backdrop-blur-sm transition-colors duration-300
                             bg-white dark:bg-[#12151f]"></div>
@@ -450,8 +451,8 @@
 
                                             <td class="px-5 py-3 text-right">
                                                 <button
-                                                    wire:click="deleteEstimate({{ $row['estimate']->id }})"
-                                                    wire:confirm="{{ __('Delete this estimate?') }}"
+                                                    @click="confirmDeleteId = {{ $row['estimate']->id }}; confirmDeleteName = $el.dataset.name"
+                                                    data-name="{{ $row['estimate']->product->name }}"
                                                     class="text-sm transition
                                                            text-neutral-400 dark:text-neutral-500
                                                            hover:text-error-500 dark:hover:text-error-400
@@ -469,6 +470,71 @@
                     @endif
 
                 </div>
+
+                {{-- Delete confirmation modal --}}
+                <div x-show="confirmDeleteId !== null"
+                     x-cloak
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0"
+                     x-transition:enter-end="opacity-100"
+                     x-transition:leave="transition ease-in duration-150"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"
+                     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+                     @keydown.escape.window="confirmDeleteId = null"
+                     @click.self="confirmDeleteId = null">
+                    <div x-show="confirmDeleteId !== null"
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 scale-95"
+                         x-transition:enter-end="opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-150"
+                         x-transition:leave-start="opacity-100 scale-100"
+                         x-transition:leave-end="opacity-0 scale-95"
+                         class="bg-white dark:bg-[#12151f] rounded-2xl shadow-xl
+                                border border-neutral-200/80 dark:border-white/[0.06]
+                                p-6 max-w-sm w-full mx-4 space-y-4">
+                        <div class="flex items-start gap-3">
+                            <div class="mt-0.5 flex-shrink-0 w-9 h-9 rounded-xl
+                                        bg-error-100 dark:bg-error-900/30
+                                        flex items-center justify-center">
+                                <svg class="h-4 w-4 text-error-600 dark:text-error-400"
+                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-neutral-900 dark:text-neutral-100">
+                                    {{ __('Delete estimate') }}
+                                </h3>
+                                <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+                                    {{ __('Delete your estimate for') }}
+                                    <span x-text="confirmDeleteName"
+                                          class="font-semibold text-neutral-800 dark:text-neutral-200"></span>?
+                                    {{ __('This cannot be undone.') }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-2 pt-1">
+                            <button type="button"
+                                    @click="confirmDeleteId = null"
+                                    class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold transition-all
+                                           border border-neutral-200 dark:border-white/[0.1]
+                                           text-neutral-600 dark:text-neutral-300
+                                           bg-white dark:bg-white/[0.04]
+                                           hover:bg-neutral-50 dark:hover:bg-white/[0.08]">
+                                {{ __('Cancel') }}
+                            </button>
+                            <button type="button"
+                                    @click="$wire.deleteEstimate(confirmDeleteId); confirmDeleteId = null"
+                                    class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold transition-all
+                                           bg-error-600 hover:bg-error-700 active:scale-95 text-white shadow-sm">
+                                {{ __('Delete') }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             {{-- City comparison --}}

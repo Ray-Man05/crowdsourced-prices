@@ -70,48 +70,52 @@ class Dashboard extends Component
 
         $aggregator = app(PriceAggregator::class);
 
-        return $estimates->map(function ($estimate) use ($currency, $aggregator, $user) {
+        // Build city averages in bulk: one bulkCityMetrics() call per unique city
+        // instead of N individual cityAverage() calls (one per estimate row).
+        // Most users have a single city so this typically becomes one bulk query.
+        $cityAverages = [];
+        foreach ($estimates->filter(fn ($e) => $e->city)->groupBy('city_id') as $cityId => $group) {
+            $city     = $group->first()->city;
+            $products = $group->map(fn ($e) => $e->product)->unique('id')->values();
+            $metrics  = $aggregator->bulkCityMetrics($products, $city, $currency, 30);
+
+            foreach ($metrics as $productId => $data) {
+                $cityAverages[$cityId][$productId] = $data['average'] ?? null;
+            }
+        }
+
+        return $estimates->map(function ($estimate) use ($currency, $cityAverages, $user) {
             $convertedPrice = $estimate->currency->convert($estimate->price, $currency);
+            $cityAvg        = $cityAverages[$estimate->city_id][$estimate->product_id] ?? null;
 
-            // cityAverage() is application-cached (1 h, version-stamped), so this is a
-            // cache read on every tab-switch after the first cold load — no DB query.
-            $cityAvg = $estimate->city
-                ? $aggregator->cityAverage($estimate->product, $estimate->city, $currency, 30)
-                : null;
-
-            // Simple median-ratio fence: same approach as dualCityMetrics(). Using the
-            // cached cityAvg means no extra data loading is needed here.
             $isOutlier = $estimate->city
                 && $cityAvg !== null
                 && $convertedPrice !== null
                 && $cityAvg > 0
                 && ($convertedPrice < $cityAvg / 5 || $convertedPrice > $cityAvg * 5);
 
-            $position = null;
+            $position  = null;
             $deviation = null;
             if ($cityAvg !== null && $convertedPrice !== null && $cityAvg > 0) {
                 $deviation = (($convertedPrice - $cityAvg) / $cityAvg) * 100;
-                $position = match (true) {
+                $position  = match (true) {
                     $deviation < -10 => 'low',
-                    $deviation > 10 => 'high',
-                    default => 'average',
+                    $deviation > 10  => 'high',
+                    default          => 'average',
                 };
             }
 
-            $cooldownEndsAt = Carbon::parse($estimate->created_at)
-                ->addDays(PriceEstimate::ESTIMATE_COOLDOWN_DAYS);
-
             return [
-                'estimate' => $estimate,
-                'converted_price' => $convertedPrice,
-                'city_average' => $cityAvg,
-                'deviation' => $deviation,
-                'position' => $position,
-                'is_outlier' => $isOutlier,
-                'cooldown_ends' => $cooldownEndsAt,
-                'symbol' => $currency->symbol,
-                'city_mismatch' => $estimate->city_id !== $user->city_id,
-                'currency_mismatch' => $estimate->currency_id !== $currency->id,
+                'estimate'         => $estimate,
+                'converted_price'  => $convertedPrice,
+                'city_average'     => $cityAvg,
+                'deviation'        => $deviation,
+                'position'         => $position,
+                'is_outlier'       => $isOutlier,
+                'cooldown_ends'    => Carbon::parse($estimate->created_at)->addDays(PriceEstimate::ESTIMATE_COOLDOWN_DAYS),
+                'symbol'           => $currency->symbol,
+                'city_mismatch'    => $estimate->city_id !== $user->city_id,
+                'currency_mismatch'=> $estimate->currency_id !== $currency->id,
             ];
         });
     }

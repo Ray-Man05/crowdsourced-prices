@@ -40,6 +40,37 @@ class CityComparison extends Component
 
     public string $basketFormName = '';
 
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    public function mount(): void
+    {
+        $user = auth()->user();
+
+        // Pre-select City A as the user's own city
+        if ($user->city_id) {
+            $cityA = City::find($user->city_id);
+            if ($cityA) {
+                $this->cityAId = $cityA->id;
+                $this->cityACountryId = $cityA->country_id;
+            }
+        }
+
+        // Pre-select City B from the ?city_b= query param (set by landing-page popup links)
+        $cityBParam = request()->query('city_b');
+        if ($cityBParam) {
+            $cityB = City::find((int) $cityBParam);
+            if ($cityB) {
+                $this->cityBId = $cityB->id;
+                $this->cityBCountryId = $cityB->country_id;
+            }
+        }
+
+        // Auto-run the comparison when both cities arrive pre-selected
+        if ($this->cityAId && $this->cityBId) {
+            $this->showComparison = true;
+        }
+    }
+
     /** Per-request in-memory cache. Not serialised by Livewire. */
     private array $metricsCache = [];
 
@@ -128,7 +159,8 @@ class CityComparison extends Component
             return;
         }
         $this->days = $days;
-        $this->showComparison = false;
+        // Keep showComparison unchanged: if a comparison is already displayed,
+        // the period change re-fetches and updates it in place.
     }
 
     // ── Compute trigger ───────────────────────────────────────────────────────
@@ -394,6 +426,11 @@ class CityComparison extends Component
         });
         $categories = $isAjax ? collect() : Category::withSortedProducts();
 
+        $userCityId = auth()->user()->city_id;
+        $showContributePrompt = $bothSelected
+            && $this->cityAId === $userCityId
+            && empty($this->cityProductIds);
+
         return view('livewire.city-comparison', [
             'cities' => $cities,
             'citiesWithData' => $citiesWithData,
@@ -403,6 +440,7 @@ class CityComparison extends Component
             'cityBName' => $this->cityBId ? (City::find($this->cityBId)?->name ?? '') : '',
             'canCompute' => $bothSelected && ! $this->showComparison,
             'showComparison' => $this->showComparison,
+            'showContributePrompt' => $showContributePrompt,
             'comparison' => ($bothSelected && $this->showComparison) ? $this->comparison : null,
             'baskets' => $this->baskets,
             'basketComparison' => ($bothSelected && $this->showComparison) ? $this->basketComparison : null,

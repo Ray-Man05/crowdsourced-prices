@@ -34,7 +34,7 @@
                     </span>
                 </div>
                 @if ($product->description)
-                    <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400 max-w-prose leading-relaxed">
+                    <p class="mt-2 text-lg text-neutral-800 dark:text-neutral-200 max-w-prose leading-relaxed">
                         {{ $product->description }}
                     </p>
                 @endif

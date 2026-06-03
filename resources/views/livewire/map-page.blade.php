@@ -202,7 +202,7 @@
         {{-- ── Price mode: product picker ── --}}
         @if ($mapMode === 'price')
         <div class="p-4 border-b border-neutral-200 dark:border-white/[0.06]">
-            <h2 class="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-3">
+            <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-800 dark:text-neutral-200 mb-3">
                 {{ __('Build your basket') }}
             </h2>
 
@@ -271,7 +271,7 @@
                         @keydown.enter.prevent="if (activeIndex >= 0 && flatProducts[activeIndex]) selectProduct(flatProducts[activeIndex])"
                         @keydown.escape="open = false; activeIndex = -1"
                         placeholder="{{ __('Search products… (/)') }}"
-                        class="w-full pl-8 text-sm rounded-lg border-neutral-300 dark:border-white/[0.1]
+                        class="w-full pl-8 text-md rounded-lg border-neutral-300 dark:border-white/[0.1]
                                bg-neutral-50 dark:bg-white/[0.04] text-neutral-800 dark:text-neutral-100
                                placeholder-neutral-400 dark:placeholder-neutral-500
                                focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500
@@ -390,6 +390,66 @@
         <div class="flex-1 overflow-y-auto p-3 space-y-1.5">
 
             @if ($mapMode === 'price')
+
+                {{-- ── Import from a saved basket ── --}}
+                @if ($savedBaskets->isNotEmpty())
+                <div x-data="{ open: false }"
+                     class="rounded-lg border border-neutral-200 dark:border-white/[0.07]
+                            bg-neutral-50 dark:bg-white/[0.02] mb-1">
+                    <button @click="open = !open"
+                            class="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold
+                                   text-neutral-500 dark:text-neutral-400
+                                   hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors rounded-lg">
+                        <span class="flex items-center gap-1.5">
+                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8M10 12v4M14 12v4"/>
+                            </svg>
+                            {{ __('Load from saved basket') }}
+                        </span>
+                        <svg class="h-3 w-3 transition-transform duration-200" :class="open && '-rotate-180'"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+
+                    <div x-show="open"
+                         x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="opacity-0 -translate-y-1"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-75"
+                         x-transition:leave-start="opacity-100 translate-y-0"
+                         x-transition:leave-end="opacity-0 -translate-y-1"
+                         style="display:none"
+                         class="px-2 pb-2 space-y-0.5">
+                        <div class="h-px bg-neutral-200 dark:bg-white/[0.06] mb-2"></div>
+                        @foreach ($savedBaskets as $sb)
+                            <div class="flex items-center gap-2 px-2 py-1.5 rounded-md
+                                        hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors group/sb">
+                                <span class="w-2 h-2 rounded-full flex-shrink-0 ring-1 ring-black/10 dark:ring-white/10"
+                                      style="background: {{ $sb->color }}"></span>
+                                <span class="flex-1 min-w-0 text-xs font-medium text-neutral-700 dark:text-neutral-200 truncate">
+                                    {{ $sb->name }}
+                                </span>
+                                <span class="text-[10px] text-neutral-400 dark:text-neutral-500 tabular-nums flex-shrink-0">
+                                    {{ $sb->items_count }}
+                                </span>
+                                <button wire:click="importFromSavedBasket({{ $sb->id }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="importFromSavedBasket({{ $sb->id }})"
+                                        class="flex-shrink-0 text-[11px] font-bold px-2 py-0.5 rounded
+                                               opacity-0 group-hover/sb:opacity-100 focus:opacity-100
+                                               text-primary-600 dark:text-primary-400
+                                               bg-primary-50 dark:bg-primary-900/25
+                                               hover:bg-primary-100 dark:hover:bg-primary-900/40
+                                               transition-all">
+                                    {{ __('Import') }}
+                                </button>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
 
                 {{-- Basket items --}}
                 @forelse ($basket as $item)

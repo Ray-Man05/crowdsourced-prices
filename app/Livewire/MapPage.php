@@ -127,6 +127,23 @@ class MapPage extends Component
         $this->removeItem($productId);
     }
 
+    public function importFromSavedBasket(int $basketId): void
+    {
+        $saved = UserBasket::where('id', $basketId)
+            ->where('user_id', auth()->id())
+            ->where('type', 'saved')
+            ->with(['items.product.unit', 'items.product.category'])
+            ->first();
+
+        if (! $saved) {
+            return;
+        }
+
+        foreach ($saved->items as $item) {
+            $this->addItem($item->product_id, (float) $item->quantity);
+        }
+    }
+
     // ── Livewire lifecycle ─────────────────────────────────────────────────
 
     public function updatedMapMode(): void
@@ -441,6 +458,11 @@ class MapPage extends Component
     {
         return view('livewire.map-page', [
             'categories' => Category::withSortedProducts(),
+            'savedBaskets' => UserBasket::where('user_id', auth()->id())
+                ->where('type', 'saved')
+                ->withCount('items')
+                ->orderBy('name')
+                ->get(),
         ])->layout('layouts.app');
     }
 }

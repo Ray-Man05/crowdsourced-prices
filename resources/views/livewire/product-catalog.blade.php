@@ -22,6 +22,7 @@
         search: '',
         selectedCategories: [],
         allProducts: window.__catalogProducts ?? [],
+        sortBy: 'category',
 
         get visibleCount() {
             const q = this.search.toLowerCase().trim();
@@ -113,46 +114,82 @@
                 <div
                     x-show="open"
                     x-cloak
-                    x-transition:enter="transition ease-out duration-100"
-                    x-transition:enter-start="opacity-0 scale-95 translate-y-1"
+                    x-transition:enter="transition ease-out duration-150"
+                    x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
                     x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                    x-transition:leave="transition ease-in duration-75"
-                    x-transition:leave-start="opacity-100 scale-100"
-                    x-transition:leave-end="opacity-0 scale-95"
-                    class="absolute right-0 z-50 mt-1.5 w-52 bg-surface-raised border border-neutral-200
-                           dark:border-white/[0.08] rounded-xl shadow-card-md py-1"
+                    x-transition:leave="transition ease-in duration-100"
+                    x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 scale-95 -translate-y-1"
+                    class="absolute right-0 z-50 mt-2 w-56
+                           rounded-xl overflow-hidden
+                           border border-neutral-200/70 dark:border-white/[0.08]
+                           bg-white/[0.97] dark:bg-[#0a0c12]/95 backdrop-blur-xl
+                           shadow-lg shadow-black/[0.08] dark:shadow-black/40"
                 >
-                    @foreach ($categories as $category)
-                        <button
-                            @click="toggleCategory({{ $category->id }})"
-                            :class="selectedCategories.includes({{ $category->id }})
-                                ? 'font-semibold text-neutral-900 dark:text-white'
-                                : 'text-neutral-700 dark:text-neutral-300'"
-                            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left
-                                   hover:bg-neutral-50 dark:hover:bg-white/[0.05] transition"
-                        >
-                            <span class="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                                  style="background-color: {{ $category->color }}"></span>
-                            {{ $category->name }}
-                            <svg x-show="selectedCategories.includes({{ $category->id }})"
-                                 class="ml-auto h-4 w-4 text-primary-500"
-                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                            </svg>
-                        </button>
-                    @endforeach
+                    <div class="px-4 py-2.5 border-b border-neutral-100 dark:border-white/[0.06]">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                            {{ __('Categories') }}
+                        </p>
+                    </div>
+
+                    <div class="py-1">
+                        @foreach ($categories as $category)
+                            <button
+                                @click="toggleCategory({{ $category->id }})"
+                                :style="selectedCategories.includes({{ $category->id }})
+                                    ? 'color: {{ $category->color }}; background-color: {{ $category->color }}18;'
+                                    : ''"
+                                :class="selectedCategories.includes({{ $category->id }})
+                                    ? 'font-semibold'
+                                    : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.07]'"
+                                class="w-full flex items-center gap-3 px-4 py-2.5 text-[15px] text-left transition-colors"
+                            >
+                                <span class="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-sm"
+                                      style="background-color: {{ $category->color }}"></span>
+                                {{ $category->name }}
+                                <svg x-show="selectedCategories.includes({{ $category->id }})"
+                                     class="ml-auto h-3.5 w-3.5 flex-shrink-0"
+                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </button>
+                        @endforeach
+                    </div>
 
                     <div x-show="selectedCategories.length > 0"
-                         class="border-t border-neutral-100 dark:border-white/[0.05] mt-1 pt-1">
+                         class="border-t border-neutral-100 dark:border-white/[0.06] py-1">
                         <button
-                            @click="clearFilters()"
-                            class="w-full px-4 py-2 text-sm text-left text-error-600 dark:text-error-400
-                                   hover:bg-neutral-50 dark:hover:bg-white/[0.05] transition"
+                            @click="clearFilters(); open = false"
+                            class="w-full flex items-center gap-2.5 px-4 py-2 text-[15px] text-left
+                                   text-error-600 dark:text-error-400
+                                   hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-colors"
                         >
+                            <svg class="h-3.5 w-3.5 opacity-70 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
                             {{ __('Clear filters') }}
                         </button>
                     </div>
                 </div>
+            </div>
+
+            {{-- Sort toggle --}}
+            <div class="flex items-center rounded-xl border border-neutral-300 dark:border-white/[0.1]
+                        bg-white dark:bg-white/[0.04] shadow-card p-1 gap-0.5 shrink-0">
+                <button
+                    @click="sortBy = 'category'"
+                    :class="sortBy === 'category'
+                        ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 font-semibold'
+                        : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'"
+                    class="px-3 py-1.5 text-sm rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                >{{ __('By category') }}</button>
+                <button
+                    @click="sortBy = 'name'"
+                    :class="sortBy === 'name'
+                        ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 font-semibold'
+                        : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'"
+                    class="px-3 py-1.5 text-sm rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                >{{ __('A–Z') }}</button>
             </div>
         </div>
     </div>
@@ -172,7 +209,7 @@
 
         {{-- Products grouped by category, each category alphabetical, products within alphabetical --}}
         @php $grouped = $products->groupBy('category_id'); @endphp
-        <div class="space-y-8">
+        <div class="space-y-8" x-show="sortBy === 'category'">
             @foreach ($grouped as $categoryId => $categoryProducts)
                 @php $cat = $categoryProducts->first()->category; @endphp
                 <div x-show="showCategory({{ $categoryId }})">
@@ -217,6 +254,37 @@
                         @endforeach
                     </div>
                 </div>
+            @endforeach
+        </div>
+
+        {{-- Flat A–Z view --}}
+        @php $productsByName = $products->sortBy(fn ($p) => $p->getRawTranslations('name')['en'] ?? '')->values(); @endphp
+        <div x-show="sortBy === 'name'" x-cloak
+             class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            @foreach ($productsByName as $product)
+                @if ($city && $currency)
+                    @php
+                        $productMetrics = $bulkMetrics[$product->id]  ?? [];
+                        $productStatus  = $userStatuses[$product->id] ?? [];
+                    @endphp
+                    <div
+                        x-show="showProduct($el)"
+                        data-name="{{ strtolower(implode(' ', array_filter(array_values($product->getRawTranslations('name'))))) }}"
+                        data-category="{{ $product->category_id }}"
+                    >
+                        <x-product-card
+                            :product="$product"
+                            :city="$city"
+                            :currency="$currency"
+                            :days="$days"
+                            :average-price="$productMetrics['average'] ?? null"
+                            :average3x-days-price="$productMetrics['average3x'] ?? null"
+                            :has-city-data="$productMetrics['has_city_data'] ?? false"
+                            :user-status="$productStatus['status'] ?? null"
+                            :user-estimate-formatted="$productStatus['formattedEstimate'] ?? null"
+                        />
+                    </div>
+                @endif
             @endforeach
         </div>
 

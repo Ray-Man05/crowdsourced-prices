@@ -70,18 +70,15 @@ class Dashboard extends Component
 
         $aggregator = app(PriceAggregator::class);
 
-        // Build city averages in bulk: one bulkCityMetrics() call per unique city
-        // instead of N individual cityAverage() calls (one per estimate row).
-        // Most users have a single city so this typically becomes one bulk query.
+        // bulkSimpleCityAverage() loads only the target city's estimates — typically
+        // dozens of rows — instead of bulkCityMetrics() which loads the full global
+        // history for IQR bounds. The dashboard's outlier check is a simple 5× ratio
+        // anyway, so the full IQR machinery was completely wasted here.
         $cityAverages = [];
         foreach ($estimates->filter(fn ($e) => $e->city)->groupBy('city_id') as $cityId => $group) {
             $city     = $group->first()->city;
             $products = $group->map(fn ($e) => $e->product)->unique('id')->values();
-            $metrics  = $aggregator->bulkCityMetrics($products, $city, $currency, 30);
-
-            foreach ($metrics as $productId => $data) {
-                $cityAverages[$cityId][$productId] = $data['average'] ?? null;
-            }
+            $cityAverages[$cityId] = $aggregator->bulkSimpleCityAverage($products, $city, $currency, 30);
         }
 
         return $estimates->map(function ($estimate) use ($currency, $cityAverages, $user) {
@@ -135,9 +132,13 @@ class Dashboard extends Component
             return null;
         }
 
-        $cityAvg = $aggregator->cityAverage($product, $user->city, $currency, 30);
-        $countryAvg = $aggregator->countryAverage($product, $user->city->country, $currency, 30);
-        $globalAvg = $aggregator->globalAverage($product, $currency, 30);
+        // dashboardComparison() loads estimates for this product once and derives all
+        // three scope averages from the same dataset — one cache entry instead of three,
+        // one set of DB queries on cold cache instead of up to six.
+        $averages = $aggregator->dashboardComparison($product, $user->city, $currency, 30);
+        $cityAvg    = $averages['city'];
+        $countryAvg = $averages['country'];
+        $globalAvg  = $averages['global'];
 
         if ($cityAvg === null && $countryAvg === null && $globalAvg === null) {
             return null;
@@ -152,15 +153,15 @@ class Dashboard extends Component
             : null;
 
         return [
-            'product' => $product,
-            'city' => $user->city,
-            'country' => $user->city->country,
-            'city_avg' => $cityAvg,
+            'product'     => $product,
+            'city'        => $user->city,
+            'country'     => $user->city->country,
+            'city_avg'    => $cityAvg,
             'country_avg' => $countryAvg,
-            'global_avg' => $globalAvg,
-            'vs_country' => $vsCountry,
-            'vs_global' => $vsGlobal,
-            'symbol' => $currency->symbol,
+            'global_avg'  => $globalAvg,
+            'vs_country'  => $vsCountry,
+            'vs_global'   => $vsGlobal,
+            'symbol'      => $currency->symbol,
         ];
     }
 
@@ -407,8 +408,6 @@ class Dashboard extends Component
     public function render()
     {
         $user = auth()->user();
-        $isEstimates = $this->activeSection === 'estimates';
-        $isBaskets = $this->activeSection === 'baskets';
 
         // Categories are pushed to window.__dashCategories via @push('scripts') on the
         // initial full-page load. Livewire AJAX responses do NOT include @push content,
@@ -418,18 +417,21 @@ class Dashboard extends Component
         $isAjax = request()->header('X-Livewire') !== null;
         $categories = $isAjax ? collect() : Category::withSortedProducts();
 
+        $isEstimates = $this->activeSection === 'estimates';
+        $isBaskets   = $this->activeSection === 'baskets';
+
         return view('livewire.dashboard', [
-            'user' => $user,
-            'categories' => $categories,
+            'user'           => $user,
+            'categories'     => $categories,
             'totalEstimates' => $isEstimates ? PriceEstimate::where('user_id', $user->id)->count() : 0,
-            'recentEstimates' => $isEstimates ? $this->recentEstimates : collect(),
-            'comparison' => $isEstimates ? $this->comparison : null,
-            'activityMap' => $isEstimates ? $this->activityMap : [],
-            'baskets' => $isBaskets ? $this->baskets : collect(),
+            'recentEstimates'=> $isEstimates ? $this->recentEstimates : collect(),
+            'comparison'     => $isEstimates ? $this->comparison : null,
+            'activityMap'    => $isEstimates ? $this->activityMap : [],
+            'baskets'        => $isBaskets ? $this->baskets : collect(),
             'cityProductIds' => $isBaskets ? $this->cityProductIds : [],
-            'basketPrice' => ($isBaskets && $this->selectedBasketId && $user->city_id)
-                                     ? $this->basketPrice
-                                     : null,
+            'basketPrice'    => ($isBaskets && $this->selectedBasketId && $user->city_id)
+                                        ? $this->basketPrice
+                                        : null,
         ])->layout('layouts.app');
     }
 }

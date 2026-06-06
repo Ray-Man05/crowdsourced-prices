@@ -65,12 +65,12 @@
          class="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/50">
 
         <div @click.outside="dismiss()"
-             class="w-full max-w-md bg-white dark:bg-[#1a1e2d]
-                    rounded-2xl shadow-card-md border border-neutral-200 dark:border-white/[0.1]
-                    overflow-hidden">
+             class="w-full max-w-md bg-white/[0.97] dark:bg-[#0a0c12]/95 backdrop-blur-xl
+                    rounded-2xl shadow-lg shadow-black/[0.08] dark:shadow-black/40
+                    border border-neutral-200/70 dark:border-white/[0.08] overflow-hidden">
 
             {{-- Header --}}
-            <div class="px-6 py-5 border-b border-neutral-200 dark:border-white/[0.06]">
+            <div class="px-6 py-5 border-b border-neutral-200/70 dark:border-white/[0.06]">
                 <div class="flex items-center gap-3">
                     <div class="w-9 h-9 rounded-xl bg-primary-100 dark:bg-primary-900/30
                                 flex items-center justify-center shrink-0">
@@ -132,7 +132,7 @@
                     </div>
                 </div>
 
-                <div class="border-t border-neutral-200 dark:border-white/[0.06] pt-4 space-y-2">
+                <div class="border-t border-neutral-200/70 dark:border-white/[0.06] pt-4 space-y-2">
                     <p class="text-sm font-bold uppercase tracking-widest
                                text-neutral-400 dark:text-neutral-500 mb-2">
                         {{ __('Tips') }}
@@ -151,8 +151,8 @@
             </div>
 
             {{-- Footer --}}
-            <div class="px-6 py-4 border-t border-neutral-200 dark:border-white/[0.06]
-                        bg-neutral-50 dark:bg-white/[0.02]
+            <div class="px-6 py-4 border-t border-neutral-200/70 dark:border-white/[0.06]
+                        bg-white/[0.40] dark:bg-white/[0.02]
                         flex items-center justify-between gap-4">
                 <label class="flex items-center gap-2 cursor-pointer select-none">
                     <input type="checkbox" x-model="dontShow"
@@ -174,8 +174,8 @@
 
     {{-- ─── Sidebar ─── --}}
     <div class="fixed sm:relative z-40 sm:z-auto top-14 bottom-0 sm:top-auto sm:bottom-auto left-0
-                w-72 flex-shrink-0 bg-surface-card border-r border-neutral-200 dark:border-white/[0.06]
-                flex flex-col overflow-hidden"
+                w-72 flex-shrink-0 bg-white/[0.97] dark:bg-[#0a0c12]/95 backdrop-blur-xl
+                border-r border-neutral-200/70 dark:border-white/[0.08] flex flex-col overflow-hidden"
          :class="[
              sidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0',
              isResizing ? '' : 'transition-[width,transform] duration-300 ease-in-out'
@@ -184,7 +184,7 @@
         <div class="w-full flex flex-col flex-1 overflow-hidden min-h-0" style="min-width: 200px">
 
         {{-- ── Mode toggle ── --}}
-        <div class="p-3 border-b border-neutral-200 dark:border-white/[0.06]">
+        <div class="p-3 border-b border-neutral-200/70 dark:border-white/[0.06]">
             <div class="flex rounded-lg border border-neutral-200 dark:border-white/[0.08]
                         bg-neutral-100 dark:bg-white/[0.04] p-0.5 gap-0.5">
                 @foreach ($modes as $modeKey => $modeLabel)
@@ -201,7 +201,7 @@
 
         {{-- ── Price mode: product picker ── --}}
         @if ($mapMode === 'price')
-        <div class="p-4 border-b border-neutral-200 dark:border-white/[0.06]">
+        <div class="p-4 border-b border-neutral-200/70 dark:border-white/[0.06]">
             <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-800 dark:text-neutral-200 mb-3">
                 {{ __('Build your basket') }}
             </h2>
@@ -284,8 +284,9 @@
                      x-transition:enter="transition ease-out duration-100"
                      x-transition:enter-start="opacity-0 scale-95"
                      x-transition:enter-end="opacity-100 scale-100"
-                     class="absolute z-20 w-full mt-1 bg-surface-raised border border-neutral-200
-                            dark:border-white/[0.08] rounded-xl shadow-card-md max-h-60 overflow-y-auto">
+                     class="absolute z-20 w-full mt-1 bg-white/[0.97] dark:bg-[#0a0c12]/95 backdrop-blur-xl
+                            border border-neutral-200/70 dark:border-white/[0.08]
+                            rounded-xl shadow-lg shadow-black/[0.08] dark:shadow-black/40 max-h-60 overflow-y-auto">
                     <template x-for="category in filteredCategories" :key="category.id">
                         <div>
                             <div class="px-3 pt-2.5 pb-1 text-[10px] font-bold uppercase tracking-widest"
@@ -323,7 +324,7 @@
                         <input type="number"
                                x-model.number="qty"
                                min="0.01" step="0.01"
-                               class="w-16 text-sm text-center rounded-lg
+                               class="w-20 text-sm text-center rounded-lg
                                       border-neutral-300 dark:border-white/[0.1]
                                       bg-neutral-50 dark:bg-white/[0.04] text-neutral-800 dark:text-neutral-100
                                       focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500
@@ -349,7 +350,7 @@
 
         {{-- ── Coverage mode: metric selector ── --}}
         @elseif ($mapMode === 'coverage')
-        <div class="p-4 border-b border-neutral-200 dark:border-white/[0.06]">
+        <div class="p-4 border-b border-neutral-200/70 dark:border-white/[0.06]">
             <h2 class="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-3">
                 {{ __('Coverage metric') }}
             </h2>
@@ -488,10 +489,10 @@
                                       d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
                         </div>
-                        <p class="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                        <p class="text-md font-medium text-neutral-500 dark:text-neutral-400">
                             {{ __('Basket is empty') }}
                         </p>
-                        <p class="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5 max-w-[160px]">
+                        <p class="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5 max-w-[160px]">
                             {{ __('Add products to compare prices across cities') }}
                         </p>
                     </div>
@@ -578,7 +579,7 @@
 
                         {{-- Top 5 products by city breadth --}}
                         @if (!empty($coverageSummary['top_products']))
-                            <div class="border-t border-neutral-200 dark:border-white/[0.08] pt-3">
+                            <div class="border-t border-neutral-200/70 dark:border-white/[0.08] pt-3">
                                 <p class="text-[10px] font-bold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 mb-2">
                                     {{ __('Widest coverage') }}
                                 </p>
@@ -626,7 +627,7 @@
         {{-- ── Bottom controls ── --}}
         <div class="p-4 border-t border-neutral-200 dark:border-white/[0.06]">
             <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ __('Period') }}</span>
+                <span class="text-sm font-medium text-neutral-500 dark:text-neutral-400">{{ __('Period') }}</span>
                 <select
                     wire:model.live="days"
                     class="text-xs rounded-lg border border-neutral-300 dark:border-white/[0.12]
@@ -649,32 +650,34 @@
                     class="rounded text-primary-600 border-neutral-300 dark:border-white/[0.1]
                            bg-neutral-50 dark:bg-white/[0.04] focus:ring-primary-500/30"
                 />
-                <span class="text-xs text-neutral-600 dark:text-neutral-400">
+                <span class="text-sm text-neutral-700 dark:text-neutral-300">
                     {{ __('Recompute on change') }}
                 </span>
             </label>
             <button
                 wire:click="compute"
                 wire:loading.attr="disabled"
-                wire:loading.class="opacity-50 cursor-not-allowed"
+                wire:loading.class="bg-warning-500 cursor-not-allowed"
+                wire:loading.class.remove="bg-primary-600 hover:bg-primary-700 active:bg-primary-800"
+                wire:target="compute, mapMode, coverageMetric, days, recomputeOnChange, addToBasket, removeFromBasket, importFromSavedBasket"
                 class="w-full py-2.5 bg-primary-600 hover:bg-primary-700 active:bg-primary-800
                        text-white text-sm font-semibold rounded-lg transition
                        flex items-center justify-center gap-2
                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500
-                       disabled:opacity-50 disabled:cursor-not-allowed"
+                       disabled:cursor-not-allowed"
             >
-                <svg wire:loading class="animate-spin h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24">
+                <svg wire:loading wire:target="compute, mapMode, coverageMetric, days, recomputeOnChange, addToBasket, removeFromBasket, importFromSavedBasket" class="animate-spin h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                 </svg>
-                <span wire:loading.remove>
+                <span wire:loading.remove wire:target="compute, mapMode, coverageMetric, days, recomputeOnChange, addToBasket, removeFromBasket, importFromSavedBasket">
                     @if ($mapMode === 'price')
                         {{ __('Compute prices') }}
                     @else
                         {{ __('Compute coverage') }}
                     @endif
                 </span>
-                <span wire:loading>{{ __('Computing…') }}</span>
+                <span wire:loading wire:target="compute, mapMode, coverageMetric, days, recomputeOnChange, addToBasket, removeFromBasket, importFromSavedBasket">{{ __('Computing…') }}</span>
             </button>
 
             @if ($error)
@@ -707,9 +710,9 @@
                 $maxVal = collect($results)->max('value');
             @endphp
             <div class="absolute bottom-4 right-4 z-[500]
-                        bg-white dark:bg-[#1a1e2d]
-                        border border-neutral-200 dark:border-white/[0.1]
-                        rounded-xl shadow-card-md p-3 w-48">
+                        bg-white/[0.97] dark:bg-[#0a0c12]/95 backdrop-blur-xl
+                        border border-neutral-200/70 dark:border-white/[0.08]
+                        rounded-xl shadow-lg shadow-black/[0.08] dark:shadow-black/40 p-3 w-48">
                 <p class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">
                     @if ($mapMode === 'price')
                         {{ __('Basket total') }}
@@ -755,10 +758,10 @@
             @click="sidebarOpen = !sidebarOpen; setTimeout(() => window.dispatchEvent(new CustomEvent('sidebar-toggled')), 310)"
             :title="sidebarOpen ? '{{ __('Hide sidebar') }} ([)' : '{{ __('Show sidebar') }} ([)'"
             :class="sidebarOpen
-                ? 'bg-white dark:bg-[#1a1e2d] border-neutral-200 dark:border-white/[0.1] text-neutral-700 dark:text-neutral-200 hover:border-neutral-300 dark:hover:border-white/[0.18]'
+                ? 'bg-white/[0.97] dark:bg-[#0a0c12]/95 border-neutral-200/70 dark:border-white/[0.08] text-neutral-700 dark:text-neutral-200 hover:border-neutral-300 dark:hover:border-white/[0.18]'
                 : 'bg-primary-600 border-primary-600 text-white hover:bg-primary-700'"
             class="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl
-                   border shadow-card transition"
+                   border backdrop-blur-xl shadow-lg shadow-black/[0.08] dark:shadow-black/40 transition"
         >
             <svg class="h-3.5 w-3.5 transition-transform duration-300"
                  :class="sidebarOpen ? '' : 'rotate-180'"
@@ -790,9 +793,9 @@
                 x-transition:leave-start="opacity-100 translate-y-0"
                 x-transition:leave-end="opacity-0 translate-y-1"
                 class="absolute bottom-full mb-2 left-0 w-64 origin-bottom-left
-                       bg-white dark:bg-[#1a1e2d]
-                       border border-neutral-200 dark:border-white/[0.1]
-                       rounded-xl shadow-card-md p-4 space-y-4"
+                       bg-white/[0.97] dark:bg-[#0a0c12]/95 backdrop-blur-xl
+                       border border-neutral-200/70 dark:border-white/[0.08]
+                       rounded-xl shadow-lg shadow-black/[0.08] dark:shadow-black/40 p-4 space-y-4"
             >
                 {{-- Marker style --}}
                 <div class="space-y-3">
@@ -832,7 +835,7 @@
                 </div>
 
                 {{-- Color scale --}}
-                <div class="space-y-3 border-t border-neutral-200 dark:border-white/[0.08] pt-3">
+                <div class="space-y-3 border-t border-neutral-200/70 dark:border-white/[0.08] pt-3">
                     <p class="text-[10px] font-bold uppercase tracking-widest text-neutral-500 dark:text-neutral-400">
                         {{ __('Color scale') }}
                     </p>
@@ -874,7 +877,7 @@
                 </div>
 
                 {{-- Map style --}}
-                <div class="space-y-2 border-t border-neutral-200 dark:border-white/[0.08] pt-3">
+                <div class="space-y-2 border-t border-neutral-200/70 dark:border-white/[0.08] pt-3">
                     <p class="text-[10px] font-bold uppercase tracking-widest text-neutral-500 dark:text-neutral-400">
                         {{ __('Map Style') }}
                     </p>
@@ -895,9 +898,9 @@
             {{-- Toggle button --}}
             <button
                 @click="open = !open"
-                :class="open ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-400 dark:border-primary-500/60' : 'bg-white dark:bg-[#1a1e2d] border-neutral-200 dark:border-white/[0.1]'"
+                :class="open ? 'bg-primary-50/90 dark:bg-primary-900/30 border-primary-400 dark:border-primary-500/60' : 'bg-white/[0.97] dark:bg-[#0a0c12]/95 border-neutral-200/70 dark:border-white/[0.08]'"
                 class="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl
-                       border shadow-card
+                       border backdrop-blur-xl shadow-lg shadow-black/[0.08] dark:shadow-black/40
                        text-neutral-700 dark:text-neutral-200
                        hover:border-neutral-300 dark:hover:border-white/[0.18] transition"
             >
@@ -921,6 +924,43 @@
 @push('scripts')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+    /* ── Map popup: glassmorphism, matches landing page ── */
+    #map .leaflet-popup-content-wrapper {
+        background: rgba(255,255,255,0.95);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(0,0,0,0.07);
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06);
+        font-family: inherit;
+        color: #111827;
+    }
+    #map .leaflet-popup-content {
+        margin: 10px 14px;
+        font-size: 13px;
+        line-height: 1.55;
+    }
+    #map .leaflet-popup-tip {
+        background: rgba(255,255,255,0.95);
+    }
+    #map .leaflet-popup-close-button {
+        color: #9ca3af !important;
+        padding: 5px 8px !important;
+        font-size: 17px !important;
+    }
+    .dark #map .leaflet-popup-content-wrapper {
+        background: rgba(12,18,30,0.92);
+        border: 1px solid rgba(255,255,255,0.10);
+        color: #f1f5f9;
+    }
+    .dark #map .leaflet-popup-tip {
+        background: rgba(12,18,30,0.92);
+    }
+    .dark #map .leaflet-popup-close-button {
+        color: #64748b !important;
+    }
+</style>
 <script>
 (function () {
     const TILES = {
@@ -939,8 +979,8 @@
     let currentResults  = [];
     let currentStyle    = {
         opacity: parseFloat(localStorage.getItem('map-opacity') || '0.85'),
-        stroke:  parseFloat(localStorage.getItem('map-stroke')  || '2'),
-        scale:   parseFloat(localStorage.getItem('map-scale')   || '10'),
+        stroke:  parseFloat(localStorage.getItem('map-stroke')  || '0'),
+        scale:   parseFloat(localStorage.getItem('map-scale')   || '12'),
     };
     let currentColorMin = '#22c55e';
     let currentColorMax = '#ef4444';
@@ -960,19 +1000,32 @@
     function drawMarkers(results, style, hexMin, hexMax) {
         markers.forEach(m => m.remove());
         markers = [];
-        const values = results.map(r => r.value);
-        const min = Math.min(...values);
-        const max = Math.max(...values);
+        if (!results.length) return;
 
-        results.forEach(r => {
-            const color = interpolateColor(r.value, min, max, hexMin, hexMax);
+        const values   = results.map(r => r.value);
+        const minV     = Math.min(...values);
+        const maxV     = Math.max(...values);
+        const logRange = Math.log1p(maxV - minV);
+
+        // Log-normalised t in [0,1]: mirrors the landing-page scale so sparse
+        // cities get small/faint dots and dense cities get large/opaque dots.
+        function valueT(v) {
+            return logRange > 0 ? Math.log1p(v - minV) / logRange : 1;
+        }
+
+        // Draw ascending so high-value markers always render on top (canvas z-order).
+        const sorted = results.slice().sort((a, b) => a.value - b.value);
+
+        sorted.forEach(r => {
+            const t     = valueT(r.value);
+            const color = interpolateColor(r.value, minV, maxV, hexMin, hexMax);
             const marker = L.circleMarker([r.lat, r.lng], {
-                radius:      style.scale ?? 10,
+                radius:      style.scale * (0.40 + t * 0.60),   // 40 % → 100 % of max scale
                 fillColor:   color,
+                fillOpacity: 0.20 + t * Math.max(0, style.opacity - 0.20),
                 color:       color,
                 weight:      style.stroke,
-                fillOpacity: style.opacity,
-                opacity:     1,
+                opacity:     style.stroke > 0 ? style.opacity * 0.45 : 0,
             }).addTo(map);
             marker.bindPopup(r.popup_html);
             markers.push(marker);

@@ -339,10 +339,10 @@
                               d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
                     </svg>
                 </div>
-                <p class="text-sm font-semibold text-neutral-600 dark:text-neutral-300">
+                <p class="text-lg font-semibold text-neutral-600 dark:text-neutral-300">
                     {{ __('Select both cities to start comparing') }}
                 </p>
-                <p class="text-xs mt-1 text-neutral-400 dark:text-neutral-500 max-w-sm">
+                <p class="text-md mt-1 text-neutral-400 dark:text-neutral-500 max-w-sm">
                     {{ __('Choose a country and city for each slot above to see side-by-side prices across all products and your baskets.') }}
                 </p>
             </div>
@@ -400,14 +400,14 @@
                             {{ __('Product Prices') }}
                         </h2>
                         @if ($comparison)
-                            <p class="text-xs mt-0.5 text-neutral-400 dark:text-neutral-500">
+                            <p class="text-sm mt-0.5 text-neutral-400 dark:text-neutral-500">
                                 {{ $comparison['products_a'] }} {{ __('products in :city', ['city' => $comparison['city_a']->name]) }}
                                 &middot;
                                 {{ $comparison['products_b'] }} {{ __('products in :city', ['city' => $comparison['city_b']->name]) }}
                             </p>
                         @endif
                     </div>
-                    <div class="hidden sm:flex items-center gap-4 text-xs font-semibold">
+                    <div class="hidden sm:flex items-center gap-4 text-sm font-semibold">
                         <span class="flex items-center gap-1.5 text-primary-600 dark:text-primary-400">
                             <span class="w-2 h-2 rounded-full bg-primary-500"></span>{{ $cityAName }}
                         </span>
@@ -439,7 +439,7 @@
                         {{-- CTA: ready to compare --}}
                         <div class="px-5 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
                             <div class="text-center sm:text-left">
-                                <p class="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
+                                <p class="text-md font-semibold text-neutral-800 dark:text-neutral-100">
                                     {{ __('Ready to compare') }}
                                     <span class="text-primary-600 dark:text-primary-400">{{ $cityAName }}</span>
                                     {{ __('and') }}
@@ -491,7 +491,7 @@
                                         bg-neutral-50/60 dark:bg-white/[0.02]
                                         border-b border-black/[0.04] dark:border-white/[0.04]">
                                 <span class="w-2 h-2 rounded-full shrink-0" style="background-color: {{ $section['category']->color ?? '#9ca3af' }}"></span>
-                                <span class="text-[10px] font-bold uppercase tracking-widest" style="color: {{ $section['category']->color ?? '#9ca3af' }}">
+                                <span class="text-[12px] font-bold uppercase tracking-widest" style="color: {{ $section['category']->color ?? '#9ca3af' }}">
                                     {{ $section['category']->name }}
                                 </span>
                             </div>
@@ -517,7 +517,7 @@
                                             {{ $row['product']->name }}
                                         </a>
                                         @if ($row['product']->unit)
-                                            <span class="text-xs shrink-0 text-neutral-400 dark:text-neutral-500">/ {{ $row['product']->unit->symbol }}</span>
+                                            <span class="text-sm shrink-0 text-neutral-300 dark:text-neutral-600">/ {{ $row['product']->unit->symbol }}</span>
                                         @endif
                                     </div>
                                     <span class="text-sm tabular-nums text-right font-medium {{ $row['price_a'] !== null ? 'text-primary-700 dark:text-primary-300' : 'text-neutral-300 dark:text-neutral-700' }}">
@@ -564,7 +564,7 @@
             <div class="relative px-5 py-4 flex items-center justify-between gap-4">
                 <div>
                     <h2 class="text-base font-semibold tracking-tight text-neutral-900 dark:text-white">{{ __('My Baskets') }}</h2>
-                    <p class="text-xs mt-0.5 text-neutral-500 dark:text-neutral-400">
+                    <p class="text-sm mt-0.5 text-neutral-500 dark:text-neutral-400">
                         {{ __('Compare your basket totals between the two selected cities') }}
                     </p>
                 </div>
@@ -651,8 +651,8 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                             </svg>
                         </div>
-                        <p class="text-sm font-medium text-neutral-500 dark:text-neutral-400">{{ __('No baskets yet') }}</p>
-                        <p class="text-xs mt-1 text-neutral-400 dark:text-neutral-500 max-w-xs">
+                        <p class="text-lg font-medium text-neutral-500 dark:text-neutral-400">{{ __('No baskets yet') }}</p>
+                        <p class="text-md mt-1 text-neutral-400 dark:text-neutral-500 max-w-xs">
                             {{ __('Create a basket to group products and compare their combined price across cities.') }}
                         </p>
                         <button wire:click="openCreateBasket"
@@ -945,6 +945,41 @@
                                             </li>
                                         @endforeach
                                     </ul>
+                                @elseif ($basket->items->isNotEmpty())
+                                    {{--
+                                        Items exist but the comparison hasn't been run yet (or cities
+                                        aren't both selected). Show the items directly from the
+                                        already-loaded relation so the list is never incorrectly empty.
+                                    --}}
+                                    <p class="px-5 py-2 text-xs text-neutral-400 dark:text-neutral-500
+                                               border-b border-black/[0.04] dark:border-white/[0.04]
+                                               bg-neutral-50/60 dark:bg-white/[0.02]">
+                                        {{ __('Run the comparison to see prices for these items.') }}
+                                    </p>
+                                    <ul class="divide-y divide-black/[0.04] dark:divide-white/[0.04]">
+                                        @foreach ($basket->items as $item)
+                                            <li class="flex items-center gap-2.5 px-5 py-2.5 group">
+                                                <span class="w-2 h-2 rounded-full shrink-0"
+                                                      style="background-color: {{ $item->product->category?->color ?? '#9ca3af' }}"></span>
+                                                <span class="flex-1 min-w-0 text-sm text-neutral-800 dark:text-neutral-100 truncate">
+                                                    {{ $item->product->name }}
+                                                </span>
+                                                <span class="text-xs text-neutral-400 dark:text-neutral-500 shrink-0">
+                                                    ×{{ rtrim(rtrim(number_format((float) $item->quantity, 2), '0'), '.') }}@if ($item->product->unit) {{ $item->product->unit->symbol }}@endif
+                                                </span>
+                                                <button wire:click="removeItemFromBasket({{ $basket->id }}, {{ $item->product_id }})"
+                                                        class="shrink-0 p-1 rounded-md transition
+                                                               text-neutral-300 dark:text-neutral-600
+                                                               hover:text-error-500 dark:hover:text-error-400
+                                                               opacity-0 group-hover:opacity-100
+                                                               focus-visible:opacity-100 focus-visible:outline-none">
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                            </li>
+                                        @endforeach
+                                    </ul>
                                 @else
                                     <div class="px-5 py-6 text-center">
                                         <p class="text-sm text-neutral-400 dark:text-neutral-500">{{ __('No items yet, add some below.') }}</p>
@@ -1107,7 +1142,7 @@
                                                    class="flex-1 min-w-0 h-1.5 rounded-full appearance-none cursor-pointer accent-primary-500"
                                                    :disabled="!selectedId"/>
                                             <input type="number" x-model.number="qty" min="0.01" step="0.01"
-                                                   class="w-16 text-sm text-center rounded-lg transition
+                                                   class="w-20 text-sm text-center rounded-lg transition
                                                           border-neutral-300 dark:border-white/[0.1]
                                                           bg-neutral-50 dark:bg-white/[0.05]
                                                           text-neutral-800 dark:text-neutral-100

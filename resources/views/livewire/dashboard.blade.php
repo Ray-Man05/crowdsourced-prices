@@ -1555,7 +1555,7 @@
                                                     <input type="number"
                                                            x-model.number="qty"
                                                            min="0.01" step="0.01"
-                                                           class="w-16 text-sm text-center rounded-lg transition
+                                                           class="w-20 text-sm text-center rounded-lg transition
                                                                   border-neutral-300 dark:border-white/[0.1]
                                                                   bg-neutral-50 dark:bg-white/[0.05]
                                                                   text-neutral-800 dark:text-neutral-100

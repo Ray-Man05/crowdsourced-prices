@@ -37,7 +37,7 @@
                     @if (auth()->user()?->isAdmin())
                         @php $adminActive = request()->routeIs('admin.*'); @endphp
                         <a href="{{ route('admin.categories') }}"
-                           class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all
+                           class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-md transition-all
                                   {{ $adminActive
                                       ? 'font-semibold text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30'
                                       : 'font-medium text-neutral-800 dark:text-neutral-200 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20' }}">

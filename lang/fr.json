@@ -61,6 +61,8 @@
 
     "Search products...": "Rechercher des produits...",
     "Categories": "Catégories",
+    "By category": "Par catégorie",
+    "A–Z": "A–Z",
     "Clear filters": "Effacer les filtres",
     "No products found": "Aucun produit trouvé",
     "Try adjusting your search or filters": "Essayez d'ajuster votre recherche ou vos filtres",
@@ -257,6 +259,7 @@
     "Last :days days · editing unavailable during cooldown": ":days derniers jours · modification indisponible pendant le délai d'attente",
     "No submissions this week": "Aucune soumission cette semaine",
     "Browse products →": "Parcourir les produits →",
+    "Browse products": "Parcourir les produits",
     "Your price": "Votre prix",
     "City avg": "Moy. ville",
     "Status": "Statut",
@@ -341,5 +344,7 @@
 
     "Build a basket of products with quantities, then click \"Compute prices\" to see the combined basket cost for each city on the map.": "Créez un panier de produits en indiquant les quantités, puis cliquez sur \"Calculer les prix\" pour connaître le coût total du panier pour chaque ville indiquée sur la carte.",
     "Visualize data density and see how many price submissions or distinct products each city has. Useful for spotting where data is sparse.": "Visualisez la densité des données et découvrez le nombre de prix enregistrés ou de produits distincts pour chaque ville. Utile pour repérer les zones où les données sont moins disponibles.",
-    "Welcome back": "Bonjour"
+    "Welcome back": "Bonjour",
+    "Load from saved basket": "Charger l'un de vos paniers",
+    "Import": "Importer"
 }

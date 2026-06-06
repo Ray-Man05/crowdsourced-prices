@@ -61,6 +61,8 @@
 
     "Search products...": "Search products...",
     "Categories": "Categories",
+    "By category": "By category",
+    "A–Z": "A–Z",
     "Clear filters": "Clear filters",
     "No products found": "No products found",
     "Try adjusting your search or filters": "Try adjusting your search or filters",
@@ -258,6 +260,7 @@
     "Last :days days · editing unavailable during cooldown": "Last :days days · editing unavailable during cooldown",
     "No submissions this week": "No submissions this week",
     "Browse products →": "Browse products →",
+    "Browse products": "Browse products",
     "Your price": "Your price",
     "City avg": "City avg",
     "Status": "Status",
@@ -344,5 +347,8 @@
 
     "Build a basket of products with quantities, then click \"Compute prices\" to see the combined basket cost for each city on the map.": "Build a basket of products with quantities, then click \"Compute prices\" to see the combined basket cost for each city on the map.",
     "Visualize data density and see how many price submissions or distinct products each city has. Useful for spotting where data is sparse.": "Visualize data density and see how many price submissions or distinct products each city has. Useful for spotting where data is sparse.",
-    "Welcome back": "Welcome back"
+    "Welcome back": "Welcome back",
+    "Load from saved basket": "Load from saved basket",
+    "Import": "Import",
+    "Broswe products": "Broswe products"
 }

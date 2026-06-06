@@ -202,18 +202,17 @@ return [
     */
 
     'required' => 'Le champ :attribute est obligatoire.',
-    'email'    => 'Le champ :attribute doit être une adresse e-mail valide.',
-    
-    
-    'unique'         => 'Cette valeur est déjà utilisée.',
-    'confirmed'      => 'La confirmation du :attribute ne correspond pas.',
-    'exists'         => 'La valeur sélectionnée pour :attribute est invalide.',
+    'email' => 'Le champ :attribute doit être une adresse e-mail valide.',
+
+    'unique' => 'Cette valeur est déjà utilisée.',
+    'confirmed' => 'La confirmation du :attribute ne correspond pas.',
+    'exists' => 'La valeur sélectionnée pour :attribute est invalide.',
 
     'attributes' => [
-        'name'                  => 'nom',
-        'email'                 => 'adresse e-mail',
-        'password'              => 'mot de passe',
-        'city_id'               => 'ville',
+        'name' => 'nom',
+        'email' => 'adresse e-mail',
+        'password' => 'mot de passe',
+        'city_id' => 'ville',
     ],
 
 ];
